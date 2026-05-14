@@ -1,17 +1,54 @@
-import { TopicForm } from "@/components/TopicForm";
+"use client";
+
+import { useState } from "react";
+
 import { ResultsShell } from "@/components/ResultsShell";
+import { TopicForm } from "@/components/TopicForm";
+import { useWikiMap, type Level } from "@/hooks/useWikiMap";
 
 export default function Home() {
+  const { state, generate, reset } = useWikiMap();
+  const [topic, setTopic] = useState("");
+  const [level, setLevel] = useState<Level>("beginner");
+
+  const isLoading = state.kind === "loading";
+
+  function handleSubmit(t: string, l: Level) {
+    setTopic(t);
+    setLevel(l);
+    generate(t, l);
+  }
+
+  function handlePickCandidate(picked: string) {
+    setTopic(picked);
+    generate(picked, level);
+  }
+
   return (
-    <main className="mx-auto max-w-5xl px-6 py-16">
-      <header className="mb-12">
+    <main className="mx-auto max-w-5xl px-6 py-12">
+      <header className="mb-10">
         <h1 className="text-3xl font-semibold tracking-tight">WikiPath</h1>
         <p className="mt-2 text-zinc-600 dark:text-zinc-400">
           Turn any Wikipedia topic into a learning map.
         </p>
       </header>
-      <TopicForm />
-      <ResultsShell map={null} />
+
+      <div className="mb-8">
+        <TopicForm
+          topic={topic}
+          level={level}
+          onTopicChange={setTopic}
+          onLevelChange={setLevel}
+          onSubmit={handleSubmit}
+          disabled={isLoading}
+        />
+      </div>
+
+      <ResultsShell
+        state={state}
+        onPickCandidate={handlePickCandidate}
+        onReset={reset}
+      />
     </main>
   );
 }
