@@ -128,10 +128,11 @@ async function evalCase(c: EvalCase): Promise<CaseResult> {
 
   if (c.expectedMustInclude && c.expectedMustInclude.length > 0) {
     const haystack = searchHaystack([
-      ...map.nodes.map((n) => n.title),
-      ...map.learningPath.map((s) => s.title),
+      ...map.nodes.map((n) => `${n.title} ${n.explanation}`),
+      ...map.learningPath.map((s) => `${s.title} ${s.reason}`),
       map.summary,
       map.keyTakeaway,
+      map.whyThisPath,
     ]);
     const missing = c.expectedMustInclude.filter(
       (term) => !haystack.includes(term.toLowerCase()),
