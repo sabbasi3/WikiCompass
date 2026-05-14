@@ -114,6 +114,13 @@ export async function POST(req: Request) {
   map = overrideGrounding(map, context);
 
   const graphIssues = checkGraphIntegrity(map);
+  const internalMeta =
+    process.env.NODE_ENV !== "production"
+      ? {
+          strippedNodeUrls: stripResult.strippedNodeUrls,
+          strippedPathUrls: stripResult.strippedPathUrls,
+        }
+      : undefined;
 
   return NextResponse.json({
     kind: "map",
@@ -126,6 +133,7 @@ export async function POST(req: Request) {
       strippedUrls:
         stripResult.strippedNodeUrls.length +
         stripResult.strippedPathUrls.length,
+      internal: internalMeta,
     },
   });
 }

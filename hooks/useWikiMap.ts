@@ -13,6 +13,10 @@ export type MapMeta = {
   retries: number;
   graphIssues: Array<{ kind: string; detail: string }>;
   strippedUrls: number;
+  internal?: {
+    strippedNodeUrls: string[];
+    strippedPathUrls: string[];
+  };
 };
 
 export type WikiMapState =

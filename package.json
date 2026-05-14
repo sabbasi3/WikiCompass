@@ -8,7 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
-    "eval": "tsx evals/run-evals.ts",
+    "eval": "tsx --env-file=.env.local evals/run-evals.ts",
     "test-wiki": "tsx scripts/test-wiki.ts",
     "test-ai": "tsx --env-file=.env.local scripts/test-ai.ts"
   },
