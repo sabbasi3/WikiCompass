@@ -53,14 +53,27 @@ The cost story is the SA-grade line: the same workload that costs $1,400 on a pr
 
 ## Production fallback routing
 
-For a production deployment I would configure Gateway fallback routing — Flash-Lite primary, Haiku 4.5 as the fallback on schema-validation failure or low confidence — so the system pays Flash-Lite pricing 95% of the time but degrades gracefully on the long tail.
+Wired via the AI SDK's native Gateway `models` provider option — the Gateway tries an ordered list of models and falls back on transport-level failures (rate limits, provider outages, timeouts). All in one config, no application-side retry code.
 
-**Status: not yet configured in this repo.** The `/api/wiki/map` route does a same-model retry once on `generateObject` failure (see `app/api/wiki/map/route.ts`); the second attempt uses the same `AI_MODEL`. To add real cross-model fallback we'd either:
+```ts
+// lib/ai/generateWikiMap.ts
+generateObject({
+  model: gateway(AI_MODEL),
+  providerOptions: {
+    gateway: { models: [AI_MODEL, ...AI_FALLBACK_MODELS] },
+  },
+  ...
+});
+```
 
-- Pass a `modelOverride` to `generateWikiMap` on the second attempt (one-line change), or
-- Use AI Gateway's dashboard-side routing rules (no code change, configured per project)
+The chain is configured via env vars:
 
-This is the right kind of improvement to defer past the take-home — the architecture supports it, the model-selection story is already defensible without it.
+- `AI_MODEL` — primary model (default `google/gemini-2.5-flash-lite`)
+- `AI_FALLBACK_MODELS` — comma-separated list, in priority order (default `anthropic/claude-haiku-4-5`)
+
+This means we pay Flash-Lite pricing on the happy path, and degrade gracefully to Haiku if Flash-Lite times out, hits a rate limit, or the provider is unavailable. The application doesn't see the failure — the Gateway handles the routing transparently. Observability lives in the Vercel AI Gateway dashboard.
+
+In addition, the `/api/wiki/map` route does one application-side retry on `generateObject` failure for the *application-layer* error case (e.g., schema validation failure where the response was successful but malformed). The two retry layers compose: Gateway handles transport, application handles content.
 
 ## Caveats and what we did *not* test
 

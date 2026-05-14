@@ -4,7 +4,7 @@ import { gateway } from "@ai-sdk/gateway";
 import type { WikiContext } from "../wiki";
 import { wikiMapSchema, type WikiMap } from "./schema";
 import { buildWikiMapPrompt } from "./prompt";
-import { AI_MODEL } from "./model";
+import { AI_FALLBACK_MODELS, AI_MODEL } from "./model";
 
 export type GenerateWikiMapResult = {
   map: WikiMap;
@@ -23,6 +23,10 @@ export async function generateWikiMap(
   const { system, prompt } = buildWikiMapPrompt(context);
   const modelId = modelOverride ?? AI_MODEL;
   const isReasoningModel = /\/gpt-5/.test(modelId) || /\/o[134]/.test(modelId);
+  const modelChain = [
+    modelId,
+    ...AI_FALLBACK_MODELS.filter((m) => m !== modelId),
+  ];
   const t0 = Date.now();
   const result = await generateObject({
     model: gateway(modelId),
@@ -30,11 +34,10 @@ export async function generateWikiMap(
     system,
     prompt,
     temperature: 0.2,
-    ...(isReasoningModel && {
-      providerOptions: {
-        openai: { reasoningEffort: "minimal" },
-      },
-    }),
+    providerOptions: {
+      ...(isReasoningModel && { openai: { reasoningEffort: "minimal" } }),
+      gateway: { models: modelChain },
+    },
   });
   return {
     map: result.object,
