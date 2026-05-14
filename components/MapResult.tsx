@@ -1,8 +1,12 @@
 "use client";
 
+import { useState } from "react";
+
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 
+import { KnowledgeGraph } from "@/components/KnowledgeGraph";
+import { NodeDetailsPanel } from "@/components/NodeDetailsPanel";
 import type { WikiMap } from "@/lib/ai/schema";
 import type { MapMeta } from "@/hooks/useWikiMap";
 
@@ -16,36 +20,12 @@ function ConfidenceBadge({ level }: { level: WikiMap["confidence"] }) {
   );
 }
 
-function NodeCard({ node }: { node: WikiMap["nodes"][number] }) {
-  return (
-    <li className="rounded-lg border border-zinc-200 p-3 dark:border-zinc-800">
-      <div className="flex items-start justify-between gap-2">
-        <div className="font-medium">
-          {node.wikipediaUrl ? (
-            <a
-              href={node.wikipediaUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="hover:underline"
-            >
-              {node.title}
-            </a>
-          ) : (
-            node.title
-          )}
-        </div>
-        <Badge variant="outline" className="shrink-0 text-xs">
-          {node.type.replace(/_/g, " ")}
-        </Badge>
-      </div>
-      <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
-        {node.explanation}
-      </p>
-    </li>
-  );
-}
-
 export function MapResult({ map, meta }: { map: WikiMap; meta: MapMeta }) {
+  const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
+  const selectedNode = selectedNodeId
+    ? (map.nodes.find((n) => n.id === selectedNodeId) ?? null)
+    : null;
+
   return (
     <div className="space-y-6">
       <Card className="p-6">
@@ -81,6 +61,35 @@ export function MapResult({ map, meta }: { map: WikiMap; meta: MapMeta }) {
           </ul>
         </Card>
       )}
+
+      <Card className="p-4">
+        <div className="mb-3 flex items-center justify-between">
+          <h3 className="text-lg font-semibold">
+            Knowledge graph
+            <span className="ml-2 text-sm font-normal text-zinc-500">
+              {map.nodes.length} nodes · {map.edges.length} edges
+            </span>
+          </h3>
+          <span className="hidden text-xs text-zinc-500 sm:inline">
+            Drag to pan · scroll to zoom · click a node for details
+          </span>
+        </div>
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+          <div className="lg:col-span-2">
+            <KnowledgeGraph
+              map={map}
+              selectedNodeId={selectedNodeId}
+              onSelectNode={setSelectedNodeId}
+            />
+          </div>
+          <div className="lg:col-span-1">
+            <NodeDetailsPanel
+              node={selectedNode}
+              onClose={() => setSelectedNodeId(null)}
+            />
+          </div>
+        </div>
+      </Card>
 
       <Card className="p-6">
         <h3 className="text-lg font-semibold">
@@ -120,20 +129,6 @@ export function MapResult({ map, meta }: { map: WikiMap; meta: MapMeta }) {
             </li>
           ))}
         </ol>
-      </Card>
-
-      <Card className="p-6">
-        <h3 className="text-lg font-semibold">
-          Concepts
-          <span className="ml-2 text-sm font-normal text-zinc-500">
-            {map.nodes.length} nodes · {map.edges.length} edges
-          </span>
-        </h3>
-        <ul className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
-          {map.nodes.map((n) => (
-            <NodeCard key={n.id} node={n} />
-          ))}
-        </ul>
       </Card>
 
       <Card className="border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-800 dark:bg-zinc-900">
