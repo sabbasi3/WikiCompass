@@ -1,0 +1,43 @@
+[
+  {
+    "topic": "Machine learning",
+    "level": "beginner",
+    "expectedMustInclude": [
+      "Artificial intelligence",
+      "Supervised learning",
+      "Neural network"
+    ],
+    "forbidden": ["World War II", "Cooking", "Basketball"]
+  },
+  {
+    "topic": "Photosynthesis",
+    "level": "beginner",
+    "expectedMustInclude": [
+      "Chlorophyll",
+      "Carbon dioxide",
+      "Light-dependent reactions"
+    ],
+    "forbidden": ["Quantum computing", "Stock market"]
+  },
+  {
+    "topic": "World War I",
+    "level": "beginner",
+    "expectedMustInclude": [
+      "Treaty of Versailles",
+      "Trench warfare",
+      "Allies of World War I"
+    ],
+    "forbidden": ["Machine learning", "Photosynthesis"]
+  },
+  {
+    "topic": "Bill Gates",
+    "level": "beginner",
+    "expectedMustInclude": ["Microsoft", "Personal computer"],
+    "forbidden": ["Photosynthesis", "Quantum computing"]
+  },
+  {
+    "topic": "Mercury",
+    "level": "beginner",
+    "expectedBehavior": "ambiguous"
+  }
+]
