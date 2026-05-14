@@ -169,19 +169,49 @@ export async function fetchWikipediaLinksAndCategories(
   };
 }
 
+export async function fetchWikipediaLeadLinks(
+  title: string,
+): Promise<{ title: string }[]> {
+  const params = new URLSearchParams({
+    action: "parse",
+    format: "json",
+    formatversion: "2",
+    page: title,
+    prop: "links",
+    section: "0",
+    redirects: "1",
+  });
+  const url = `${WIKI_BASE}/w/api.php?${params.toString()}`;
+  const res = await wikiFetch(url);
+  if (!res.ok) return [];
+  const data = (await res.json()) as {
+    error?: { code: string };
+    parse?: {
+      links?: Array<{ ns: number; exists?: boolean; title: string }>;
+    };
+  };
+  if (data.error) return [];
+  const rawLinks = data.parse?.links ?? [];
+  return rawLinks
+    .filter((l) => l.ns === 0 && l.exists !== false)
+    .map((l) => ({ title: l.title.replace(/_/g, " ") }));
+}
+
 export async function getWikipediaContext(
   title: string,
   userLevel: WikiContext["userLevel"],
   userGoal?: string,
 ): Promise<WikiContext> {
-  const [summary, lc] = await Promise.all([
+  const [summary, lc, leadLinks] = await Promise.all([
     fetchWikipediaSummary(title),
     fetchWikipediaLinksAndCategories(title),
+    fetchWikipediaLeadLinks(title),
   ]);
   if (summary.type === "disambiguation") {
     throw new DisambiguationError(summary.title);
   }
-  const candidateLinks = filterAndDedupeLinks(lc.links, 60);
+  const mergedLinks = [...leadLinks, ...lc.links];
+  const candidateLinks = filterAndDedupeLinks(mergedLinks, 60);
   return {
     title: summary.title,
     summary: summary.extract,
