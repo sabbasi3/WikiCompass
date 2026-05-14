@@ -26,10 +26,10 @@ export function computeGraphLayout(map: WikiMap): {
   g.setDefaultEdgeLabel(() => ({}));
   g.setGraph({
     rankdir: "TB",
-    nodesep: 50,
-    ranksep: 80,
-    marginx: 20,
-    marginy: 20,
+    nodesep: 40,
+    ranksep: 50,
+    marginx: 12,
+    marginy: 12,
   });
 
   for (const node of map.nodes) {

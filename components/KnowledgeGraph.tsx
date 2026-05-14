@@ -169,7 +169,7 @@ export function KnowledgeGraph({
   );
 
   return (
-    <div className="h-[520px] w-full rounded-lg border border-zinc-200 bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-950">
+    <div className="h-[420px] w-full rounded-lg border border-zinc-200 bg-zinc-50 lg:h-[560px] dark:border-zinc-800 dark:bg-zinc-950">
       <ReactFlow
         nodes={styledNodes}
         edges={edges}
@@ -177,7 +177,7 @@ export function KnowledgeGraph({
         onEdgesChange={onEdgesChange}
         nodeTypes={nodeTypes}
         fitView
-        fitViewOptions={{ padding: 0.15 }}
+        fitViewOptions={{ padding: 0.05 }}
         proOptions={{ hideAttribution: true }}
         onNodeClick={(_, node) => onSelectNode(node.id)}
         onPaneClick={() => onSelectNode(null)}
