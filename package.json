@@ -9,9 +9,11 @@
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
     "eval": "tsx evals/run-evals.ts",
-    "test-wiki": "tsx scripts/test-wiki.ts"
+    "test-wiki": "tsx scripts/test-wiki.ts",
+    "test-ai": "tsx --env-file=.env.local scripts/test-ai.ts"
   },
   "dependencies": {
+    "@ai-sdk/gateway": "^3.0.114",
     "@base-ui/react": "^1.4.1",
     "ai": "^6.0.182",
     "class-variance-authority": "^0.7.1",

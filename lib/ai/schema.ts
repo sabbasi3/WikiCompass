@@ -15,14 +15,14 @@ export const wikiMapSchema = z.object({
   audienceLevel: z.enum(["beginner", "intermediate", "advanced"]),
   keyTakeaway: z.string(),
   confidence: z.enum(["high", "medium", "low"]),
-  warnings: z.array(z.string()).default([]),
+  warnings: z.array(z.string()),
   whyThisPath: z.string(),
   learningPath: z.array(
     z.object({
       order: z.number(),
       title: z.string(),
       reason: z.string(),
-      wikipediaUrl: z.string().optional(),
+      wikipediaUrl: z.string().nullable(),
     }),
   ),
   nodes: z.array(
@@ -44,7 +44,7 @@ export const wikiMapSchema = z.object({
         "work",
       ]),
       explanation: z.string(),
-      wikipediaUrl: z.string().optional(),
+      wikipediaUrl: z.string().nullable(),
     }),
   ),
   edges: z.array(
