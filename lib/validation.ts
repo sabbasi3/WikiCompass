@@ -5,7 +5,7 @@ import {
   NODE_COUNT_MAX,
   NODE_COUNT_MIN,
 } from "./ai/constants";
-import type { WikiMap } from "./ai/schema";
+import type { WikiMap } from "./schemas";
 
 export type StripResult = {
   map: WikiMap;

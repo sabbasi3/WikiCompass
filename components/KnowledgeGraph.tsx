@@ -18,7 +18,7 @@ import {
 import "@xyflow/react/dist/style.css";
 
 import { computeGraphLayout } from "@/lib/graph-layout";
-import type { WikiMap } from "@/lib/ai/schema";
+import type { WikiMap } from "@/lib/schemas";
 import { NODE_STYLES } from "./node-styles";
 
 type GraphNodeData = WikiMap["nodes"][number] & Record<string, unknown>;

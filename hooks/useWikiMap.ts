@@ -2,7 +2,7 @@
 
 import { useCallback, useState } from "react";
 
-import type { WikiMap } from "@/lib/ai/schema";
+import type { WikiMap } from "@/lib/schemas";
 import type { WikiSearchResult } from "@/lib/wiki";
 
 export type Level = "beginner" | "intermediate" | "advanced";

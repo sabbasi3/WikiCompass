@@ -2,7 +2,7 @@
 // Co-located with the graph renderer (KnowledgeGraph) that consumes them.
 // If a second consumer appears, lift to lib/.
 
-import type { WikiMap } from "@/lib/ai/schema";
+import type { WikiMap } from "@/lib/schemas";
 
 export type NodeType = WikiMap["nodes"][number]["type"];
 

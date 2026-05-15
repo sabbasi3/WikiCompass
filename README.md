@@ -207,13 +207,13 @@ components/
 hooks/
   useWikiMap.ts                  client state machine
 lib/
+  schemas.ts                     central Zod schemas (request + AI output) and derived types
   wiki.ts                        search, summary, links, lead-section, context
   link-filter.ts                 pure Wikipedia link filter (blocklist + admin patterns + year detector + dedupe + cap)
   graph-layout.ts                dagre top-to-bottom positioning
   validation.ts                  URL strip, graph integrity, grounding override
   ai/
     model.ts                     env-var-driven model + fallback chain
-    schema.ts                    Zod schema for WikiMap output
     prompt.ts                    system + user message builder
     generateWikiMap.ts           generateText + Output.object call
 evals/

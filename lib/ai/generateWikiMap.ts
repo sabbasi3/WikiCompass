@@ -2,7 +2,7 @@ import { Output, generateText } from "ai";
 import { gateway } from "@ai-sdk/gateway";
 
 import type { WikiContext } from "../wiki";
-import { wikiMapSchema, type WikiMap } from "./schema";
+import { wikiMapSchema, type WikiMap } from "../schemas";
 import { buildWikiMapPrompt } from "./prompt";
 import { AI_FALLBACK_MODELS, AI_MODEL } from "./model";
 

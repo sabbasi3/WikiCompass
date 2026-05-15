@@ -1,6 +1,6 @@
 import dagre from "dagre";
 
-import type { WikiMap } from "./ai/schema";
+import type { WikiMap } from "./schemas";
 
 export type LayoutNode = {
   id: string;

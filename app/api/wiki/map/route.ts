@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import { z } from "zod";
 
 import {
   DisambiguationError,
@@ -8,19 +7,14 @@ import {
   searchWikipedia,
 } from "@/lib/wiki";
 import { generateWikiMap } from "@/lib/ai/generateWikiMap";
-import { getClientIp, mapRateLimit } from "@/lib/rate-limit";
+import { checkRateLimit } from "@/lib/rate-limit";
+import { mapRequestSchema } from "@/lib/schemas";
 import {
   buildAllowedUrlSet,
   checkGraphIntegrity,
   overrideGrounding,
   stripHallucinatedUrls,
 } from "@/lib/validation";
-
-const mapRequestSchema = z.object({
-  topic: z.string().min(1).max(200),
-  level: z.enum(["beginner", "intermediate", "advanced"]),
-  userGoal: z.string().max(500).optional(),
-});
 
 export async function POST(req: Request) {
   let body: unknown;
@@ -50,34 +44,9 @@ export async function POST(req: Request) {
   }
   const { topic, level, userGoal } = parsed.data;
 
-  let rateHeaders: Record<string, string> = {};
-  if (mapRateLimit) {
-    const ip = getClientIp(req);
-    const { success, limit, remaining, reset } = await mapRateLimit.limit(ip);
-    const retryAfterSeconds = Math.max(
-      0,
-      Math.ceil((reset - Date.now()) / 1000),
-    );
-    rateHeaders = {
-      "X-RateLimit-Limit": String(limit),
-      "X-RateLimit-Remaining": String(remaining),
-      "X-RateLimit-Reset": String(Math.ceil(reset / 1000)),
-    };
-    if (!success) {
-      return NextResponse.json(
-        {
-          kind: "rate_limited",
-          message: `You have hit the rate limit. Try again in ${retryAfterSeconds} second${retryAfterSeconds === 1 ? "" : "s"}.`,
-          retryAfterSeconds,
-          limit,
-        },
-        {
-          status: 429,
-          headers: { ...rateHeaders, "Retry-After": String(retryAfterSeconds) },
-        },
-      );
-    }
-  }
+  const rate = await checkRateLimit(req);
+  if (!rate.ok) return rate.response;
+  const rateHeaders = rate.headers;
 
   let context;
   try {

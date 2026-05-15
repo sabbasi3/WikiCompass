@@ -7,7 +7,7 @@ import { Card } from "@/components/ui/card";
 
 import { KnowledgeGraph } from "@/components/KnowledgeGraph";
 import { NodeDetailsPanel } from "@/components/NodeDetailsPanel";
-import type { WikiMap } from "@/lib/ai/schema";
+import type { WikiMap } from "@/lib/schemas";
 import type { MapMeta } from "@/hooks/useWikiMap";
 
 function ConfidenceBadge({ level }: { level: WikiMap["confidence"] }) {

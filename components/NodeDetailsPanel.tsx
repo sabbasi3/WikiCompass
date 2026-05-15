@@ -2,7 +2,7 @@
 
 import { Badge } from "@/components/ui/badge";
 
-import type { WikiMap } from "@/lib/ai/schema";
+import type { WikiMap } from "@/lib/schemas";
 
 type Node = WikiMap["nodes"][number];
 

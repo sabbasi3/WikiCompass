@@ -8,7 +8,7 @@ Each model was called once with identical inputs:
 
 - **Topic:** Machine learning, level: beginner
 - **Prompt:** `lib/ai/prompt.ts` (system + user, ~2.5K input tokens)
-- **Schema:** `wikiMapSchema` in `lib/ai/schema.ts` via AI SDK `generateText` with `Output.object` (strict structured-output mode)
+- **Schema:** `wikiMapSchema` in `lib/schemas.ts` via AI SDK `generateText` with `Output.object` (strict structured-output mode)
 - **Temperature:** 0.2
 - **OpenAI reasoning models:** `providerOptions.openai.reasoningEffort = "minimal"`
 
