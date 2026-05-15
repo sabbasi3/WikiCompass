@@ -36,7 +36,7 @@ Ambiguous topics like `Mercury` show a deterministic chooser (planet / element /
 ```
                 ┌──────────────────────────────────────┐
                 │            Browser (React)           │
-                │  TopicForm · ResultsShell · Skeleton │
+                │  TopicForm · ResultsByState · Skeleton│
                 │  KnowledgeGraph (React Flow + dagre) │
                 │       NodeDetailsPanel · etc.        │
                 └────────────────┬─────────────────────┘
@@ -45,20 +45,20 @@ Ambiguous topics like `Mercury` show a deterministic chooser (planet / element /
    ┌──────────────────────────────────────────────────────────────┐
    │             Next.js App Router (route handlers)              │
    │                                                              │
-   │   /api/wiki/search        /api/wiki/map                      │
-   │   ├─ searchWikipedia      ├─ rate-limit check (per-IP) ──────┼──┐
-   │                           ├─ getWikipediaContext             │  │
-   │                           │   ├─ summary  (REST)             │  │
-   │                           │   ├─ links    (Action API)       │  │
-   │                           │   └─ lead-section links (parse)  │  │
-   │                           │                                  │  │
-   │                           ├─ generateWikiMap                 │  │
-   │                           │   └─ generateText + Output.object│  │
-   │                           │                                  │  │
-   │                           └─ post-AI pipeline:               │  │
-   │                               ├─ stripHallucinatedUrls       │  │
-   │                               ├─ overrideGrounding           │  │
-   │                               └─ checkGraphIntegrity         │  │
+   │   /api/wiki/map                                              │
+   │   ├─ rate-limit check (per-IP) ──────────────────────────────┼──┐
+   │   ├─ getWikipediaContext                                     │  │
+   │   │   ├─ summary  (REST)                                     │  │
+   │   │   ├─ links    (Action API)                               │  │
+   │   │   └─ lead-section links (parse)                          │  │
+   │   │                                                          │  │
+   │   ├─ generateWikiMap                                         │  │
+   │   │   └─ generateText + Output.object                        │  │
+   │   │                                                          │  │
+   │   └─ post-AI pipeline:                                       │  │
+   │       ├─ stripHallucinatedUrls                               │  │
+   │       ├─ overrideGrounding                                   │  │
+   │       └─ checkGraphIntegrity                                 │  │
    └────────────────┬─────────────────────────────────┬───────────┘  │
                     │                                 │              │
                     ▼                                 ▼              ▼
@@ -197,11 +197,9 @@ app/
   page.tsx                       client home page
   layout.tsx                     metadata + fonts
   api/wiki/
-    search/route.ts              POST { query } -> { candidates }
-    context/route.ts             (stub — not exposed to UI in MVP)
-    map/route.ts                 POST { topic, level } -> map | dab | 404 | ai_failed
+    map/route.ts                 POST { topic, level, userGoal? } -> map | dab | 404 | ai_failed
 components/
-  TopicForm, ResultsShell,
+  TopicForm, ResultsByState,
   MapSkeleton, MapResult,
   KnowledgeGraph,                React Flow + dagre layout
   NodeDetailsPanel,
@@ -210,7 +208,7 @@ hooks/
   useWikiMap.ts                  client state machine
 lib/
   wiki.ts                        search, summary, links, lead-section, context
-  context.ts                     pure link filter
+  link-filter.ts                 pure Wikipedia link filter (blocklist + admin patterns + year detector + dedupe + cap)
   graph-layout.ts                dagre top-to-bottom positioning
   validation.ts                  URL strip, graph integrity, grounding override
   ai/

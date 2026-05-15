@@ -26,7 +26,11 @@ export async function POST(req: Request) {
   let body: unknown;
   try {
     body = await req.json();
-  } catch {
+  } catch (err) {
+    console.warn(
+      "[wiki/map] invalid JSON body:",
+      err instanceof Error ? err.message : String(err),
+    );
     return NextResponse.json(
       { kind: "error", message: "Invalid JSON body" },
       { status: 400 },
@@ -92,10 +96,15 @@ export async function POST(req: Request) {
         { status: 404, headers: rateHeaders },
       );
     }
-    const message =
-      err instanceof Error ? err.message : "Wikipedia fetch failed";
+    // Log the detail server-side; return a generic message to the client
+    // so we don't leak internal error strings, library version hints, or
+    // upstream identifiers in the public response.
+    console.error(
+      "[wiki/map] Wikipedia fetch failed:",
+      err instanceof Error ? err.message : String(err),
+    );
     return NextResponse.json(
-      { kind: "error", message },
+      { kind: "error", message: "Wikipedia fetch failed" },
       { status: 502, headers: rateHeaders },
     );
   }
@@ -117,16 +126,15 @@ export async function POST(req: Request) {
     try {
       mapResult = await generateWikiMap(context);
     } catch (secondErr) {
+      // Log detail server-side; return a generic message to the client.
       console.error(
         "[wiki/map] retry also failed, returning ai_failed:",
         secondErr instanceof Error ? secondErr.message : String(secondErr),
       );
-      const message =
-        secondErr instanceof Error ? secondErr.message : "AI generation failed";
       return NextResponse.json(
         {
           kind: "ai_failed",
-          message,
+          message: "AI generation failed",
           fallback: {
             title: context.title,
             canonicalUrl: context.canonicalUrl,

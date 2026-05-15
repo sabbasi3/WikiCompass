@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 
-import { ResultsShell } from "@/components/ResultsShell";
+// Renders the state-machine view (skeleton, map, disambiguation, errors).
+import { ResultsByState } from "@/components/ResultsByState";
 import { TopicForm } from "@/components/TopicForm";
 import { useWikiMap, type Level } from "@/hooks/useWikiMap";
 
@@ -47,7 +48,7 @@ export default function Home() {
         />
       </div>
 
-      <ResultsShell
+      <ResultsByState
         state={state}
         onPickCandidate={handlePickCandidate}
         onReset={reset}

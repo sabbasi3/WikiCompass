@@ -7,7 +7,9 @@ import { MapResult } from "@/components/MapResult";
 import { MapSkeleton } from "@/components/MapSkeleton";
 import type { WikiMapState } from "@/hooks/useWikiMap";
 
-export function ResultsShell({
+// Renders the right sub-component for the current WikiMapState kind.
+// Pure switch on state.kind — no side effects, no own state.
+export function ResultsByState({
   state,
   onPickCandidate,
   onReset,

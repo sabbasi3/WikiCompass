@@ -1,6 +1,6 @@
 // Wikipedia data-access layer
 
-import { filterAndDedupeLinks } from "./context";
+import { filterAndDedupeLinks } from "./link-filter";
 
 const WIKI_BASE = "https://en.wikipedia.org";
 // Identify this app to Wikipedia for API etiquette and easier operator debugging.
@@ -178,6 +178,11 @@ export async function fetchWikipediaLeadLinks(
   title: string,
 ): Promise<{ title: string }[]> {
   // Pull only lead-section links so core concepts can be prioritized later.
+  // Soft-fails to [] on any error: the caller (getWikipediaContext) merges
+  // these with full-page links and tolerates an empty lead-link list. But
+  // a silent empty list means we lose lead-priority ordering, which is the
+  // root cause behind coverage gaps in the eval suite — log when it fires
+  // so ops can see it.
   const params = new URLSearchParams({
     action: "parse",
     format: "json",
@@ -189,14 +194,24 @@ export async function fetchWikipediaLeadLinks(
   });
   const url = `${WIKI_BASE}/w/api.php?${params.toString()}`;
   const res = await wikiFetch(url);
-  if (!res.ok) return [];
+  if (!res.ok) {
+    console.warn(
+      `[wiki] fetchWikipediaLeadLinks fell back to []: ${res.status} ${res.statusText} for "${title}"`,
+    );
+    return [];
+  }
   const data = (await res.json()) as {
-    error?: { code: string };
+    error?: { code: string; info?: string };
     parse?: {
       links?: Array<{ ns: number; exists?: boolean; title: string }>;
     };
   };
-  if (data.error) return [];
+  if (data.error) {
+    console.warn(
+      `[wiki] fetchWikipediaLeadLinks fell back to []: ${data.error.code}${data.error.info ? ` (${data.error.info})` : ""} for "${title}"`,
+    );
+    return [];
+  }
   const rawLinks = data.parse?.links ?? [];
   return rawLinks
     .filter((l) => l.ns === 0 && l.exists !== false)
