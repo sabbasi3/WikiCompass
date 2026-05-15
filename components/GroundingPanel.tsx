@@ -1,11 +1,5 @@
-"use client";
 
-import type { WikiMap } from "@/lib/ai/schema";
 
-export function GroundingPanel({
-  grounding: _grounding,
-}: {
-  grounding: WikiMap["grounding"];
-}) {
+export function GroundingPanel() {
   return <div data-testid="grounding-panel" />;
 }

@@ -1,7 +1,5 @@
-"use client";
 
-import type { WikiMap } from "@/lib/ai/schema";
 
-export function LearningPath({ map: _map }: { map: WikiMap }) {
+export function LearningPath() {
   return <div data-testid="learning-path" />;
 }

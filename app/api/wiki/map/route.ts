@@ -104,7 +104,7 @@ export async function POST(req: Request) {
   let retries = 0;
   try {
     mapResult = await generateWikiMap(context);
-  } catch (firstErr) {
+  } catch {
     retries = 1;
     try {
       mapResult = await generateWikiMap(context);

@@ -1,11 +1,5 @@
-"use client";
 
-import type { WikiMap } from "@/lib/ai/schema";
 
-export function ConfidenceBadge({
-  level: _level,
-}: {
-  level: WikiMap["confidence"];
-}) {
+export function ConfidenceBadge() {
   return <span data-testid="confidence-badge" />;
 }
