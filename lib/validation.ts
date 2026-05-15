@@ -1,4 +1,10 @@
 import type { WikiContext } from "./wiki";
+import {
+  LEARNING_PATH_MAX,
+  LEARNING_PATH_MIN,
+  NODE_COUNT_MAX,
+  NODE_COUNT_MIN,
+} from "./ai/constants";
 import type { WikiMap } from "./ai/schema";
 
 export type StripResult = {
@@ -81,17 +87,20 @@ export function checkGraphIntegrity(map: WikiMap): GraphIssue[] {
     });
   }
 
-  if (map.nodes.length < 8 || map.nodes.length > 15) {
+  if (map.nodes.length < NODE_COUNT_MIN || map.nodes.length > NODE_COUNT_MAX) {
     issues.push({
       kind: "node_count_out_of_range",
-      detail: `node count ${map.nodes.length} not in [8, 15]`,
+      detail: `node count ${map.nodes.length} not in [${NODE_COUNT_MIN}, ${NODE_COUNT_MAX}]`,
     });
   }
 
-  if (map.learningPath.length < 4 || map.learningPath.length > 8) {
+  if (
+    map.learningPath.length < LEARNING_PATH_MIN ||
+    map.learningPath.length > LEARNING_PATH_MAX
+  ) {
     issues.push({
       kind: "path_length_out_of_range",
-      detail: `learning path length ${map.learningPath.length} not in [4, 8]`,
+      detail: `learning path length ${map.learningPath.length} not in [${LEARNING_PATH_MIN}, ${LEARNING_PATH_MAX}]`,
     });
   }
 

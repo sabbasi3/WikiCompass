@@ -1,4 +1,10 @@
 import type { WikiContext } from "../wiki";
+import {
+  LEARNING_PATH_MAX,
+  LEARNING_PATH_MIN,
+  NODE_COUNT_MAX,
+  NODE_COUNT_MIN,
+} from "./constants";
 
 export type PromptParts = {
   system: string;
@@ -25,7 +31,7 @@ CRITICAL RULES — follow these strictly:
    - work (e.g. a book, film, theory): creator -> content -> reception/influence.
 
 5. Node constraints.
-   - Generate 8 to 15 total nodes.
+   - Generate ${NODE_COUNT_MIN} to ${NODE_COUNT_MAX} total nodes.
    - Include EXACTLY ONE node with type "main_topic" — it represents the article topic itself.
    - Node ids must be unique strings. Use slugified titles where natural (e.g. "neural-network", "microsoft").
    - "explanation" is 1 to 3 sentences appropriate to audienceLevel.
@@ -36,7 +42,7 @@ CRITICAL RULES — follow these strictly:
    - Edges should be useful for learning, not exhaustive. Aim for clarity over completeness.
 
 7. Learning path.
-   - Include 4 to 8 ordered steps.
+   - Include ${LEARNING_PATH_MIN} to ${LEARNING_PATH_MAX} ordered steps.
    - Each step's "reason" is one sentence explaining why this step comes next.
    - Path style matches the topic type (see rule 4).
 

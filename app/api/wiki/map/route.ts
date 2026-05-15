@@ -104,11 +104,23 @@ export async function POST(req: Request) {
   let retries = 0;
   try {
     mapResult = await generateWikiMap(context);
-  } catch {
+  } catch (firstErr) {
+    // Server-side log only - safe to log Zod/AI error messages here
+    // because route handlers run on the server, never visible to the
+    // client DevTools console. Goes to next dev terminal locally and
+    // Vercel function logs in production.
+    console.error(
+      "[wiki/map] first attempt failed, retrying:",
+      firstErr instanceof Error ? firstErr.message : String(firstErr),
+    );
     retries = 1;
     try {
       mapResult = await generateWikiMap(context);
     } catch (secondErr) {
+      console.error(
+        "[wiki/map] retry also failed, returning ai_failed:",
+        secondErr instanceof Error ? secondErr.message : String(secondErr),
+      );
       const message =
         secondErr instanceof Error ? secondErr.message : "AI generation failed";
       return NextResponse.json(

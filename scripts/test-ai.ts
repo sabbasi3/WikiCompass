@@ -1,6 +1,12 @@
 import { getWikipediaContext } from "../lib/wiki";
 import { generateWikiMap } from "../lib/ai/generateWikiMap";
 import { AI_MODEL } from "../lib/ai/model";
+import {
+  LEARNING_PATH_MAX,
+  LEARNING_PATH_MIN,
+  NODE_COUNT_MAX,
+  NODE_COUNT_MIN,
+} from "../lib/ai/constants";
 
 type Level = "beginner" | "intermediate" | "advanced";
 
@@ -129,19 +135,21 @@ async function main() {
       : `[FAIL] Expected 1 main_topic, found ${mainCount}`,
   );
 
-  const nodeCountOk = map.nodes.length >= 8 && map.nodes.length <= 15;
+  const nodeCountOk =
+    map.nodes.length >= NODE_COUNT_MIN && map.nodes.length <= NODE_COUNT_MAX;
   console.log(
     nodeCountOk
-      ? `[OK] Node count in 8-15 range (${map.nodes.length})`
-      : `[WARN] Node count ${map.nodes.length} outside 8-15 range`,
+      ? `[OK] Node count in ${NODE_COUNT_MIN}-${NODE_COUNT_MAX} range (${map.nodes.length})`
+      : `[WARN] Node count ${map.nodes.length} outside ${NODE_COUNT_MIN}-${NODE_COUNT_MAX} range`,
   );
 
   const pathCountOk =
-    map.learningPath.length >= 4 && map.learningPath.length <= 8;
+    map.learningPath.length >= LEARNING_PATH_MIN &&
+    map.learningPath.length <= LEARNING_PATH_MAX;
   console.log(
     pathCountOk
-      ? `[OK] Learning path in 4-8 range (${map.learningPath.length})`
-      : `[WARN] Learning path length ${map.learningPath.length} outside 4-8 range`,
+      ? `[OK] Learning path in ${LEARNING_PATH_MIN}-${LEARNING_PATH_MAX} range (${map.learningPath.length})`
+      : `[WARN] Learning path length ${map.learningPath.length} outside ${LEARNING_PATH_MIN}-${LEARNING_PATH_MAX} range`,
   );
 }
 
