@@ -46,6 +46,7 @@ export async function POST(req: Request) {
   }
   const { topic, level, userGoal } = parsed.data;
 
+  let rateHeaders: Record<string, string> = {};
   if (mapRateLimit) {
     const ip = getClientIp(req);
     const { success, limit, remaining, reset } = await mapRateLimit.limit(ip);
@@ -53,7 +54,7 @@ export async function POST(req: Request) {
       0,
       Math.ceil((reset - Date.now()) / 1000),
     );
-    const headers = {
+    rateHeaders = {
       "X-RateLimit-Limit": String(limit),
       "X-RateLimit-Remaining": String(remaining),
       "X-RateLimit-Reset": String(Math.ceil(reset / 1000)),
@@ -68,7 +69,7 @@ export async function POST(req: Request) {
         },
         {
           status: 429,
-          headers: { ...headers, "Retry-After": String(retryAfterSeconds) },
+          headers: { ...rateHeaders, "Retry-After": String(retryAfterSeconds) },
         },
       );
     }
@@ -82,18 +83,21 @@ export async function POST(req: Request) {
       const candidates = await searchWikipedia(topic, 8).catch(() => []);
       return NextResponse.json(
         { kind: "disambiguation", title: err.title, candidates },
-        { status: 409 },
+        { status: 409, headers: rateHeaders },
       );
     }
     if (err instanceof WikipediaNotFoundError) {
       return NextResponse.json(
         { kind: "not_found", title: err.title },
-        { status: 404 },
+        { status: 404, headers: rateHeaders },
       );
     }
     const message =
       err instanceof Error ? err.message : "Wikipedia fetch failed";
-    return NextResponse.json({ kind: "error", message }, { status: 502 });
+    return NextResponse.json(
+      { kind: "error", message },
+      { status: 502, headers: rateHeaders },
+    );
   }
 
   let mapResult;
@@ -118,7 +122,7 @@ export async function POST(req: Request) {
             candidateLinks: context.candidateLinks,
           },
         },
-        { status: 502 },
+        { status: 502, headers: rateHeaders },
       );
     }
   }
@@ -151,18 +155,21 @@ export async function POST(req: Request) {
         }
       : undefined;
 
-  return NextResponse.json({
-    kind: "map",
-    map,
-    meta: {
-      latencyMs: mapResult.latencyMs,
-      usage: mapResult.usage,
-      retries,
-      graphIssues,
-      strippedUrls:
-        stripResult.strippedNodeUrls.length +
-        stripResult.strippedPathUrls.length,
-      internal: internalMeta,
+  return NextResponse.json(
+    {
+      kind: "map",
+      map,
+      meta: {
+        latencyMs: mapResult.latencyMs,
+        usage: mapResult.usage,
+        retries,
+        graphIssues,
+        strippedUrls:
+          stripResult.strippedNodeUrls.length +
+          stripResult.strippedPathUrls.length,
+        internal: internalMeta,
+      },
     },
-  });
+    { headers: rateHeaders },
+  );
 }
