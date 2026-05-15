@@ -8,6 +8,7 @@ import {
   searchWikipedia,
 } from "@/lib/wiki";
 import { generateWikiMap } from "@/lib/ai/generateWikiMap";
+import { getClientIp, mapRateLimit } from "@/lib/rate-limit";
 import {
   buildAllowedUrlSet,
   checkGraphIntegrity,
@@ -44,6 +45,34 @@ export async function POST(req: Request) {
     );
   }
   const { topic, level, userGoal } = parsed.data;
+
+  if (mapRateLimit) {
+    const ip = getClientIp(req);
+    const { success, limit, remaining, reset } = await mapRateLimit.limit(ip);
+    const retryAfterSeconds = Math.max(
+      0,
+      Math.ceil((reset - Date.now()) / 1000),
+    );
+    const headers = {
+      "X-RateLimit-Limit": String(limit),
+      "X-RateLimit-Remaining": String(remaining),
+      "X-RateLimit-Reset": String(Math.ceil(reset / 1000)),
+    };
+    if (!success) {
+      return NextResponse.json(
+        {
+          kind: "rate_limited",
+          message: `You have hit the rate limit. Try again in ${retryAfterSeconds} second${retryAfterSeconds === 1 ? "" : "s"}.`,
+          retryAfterSeconds,
+          limit,
+        },
+        {
+          status: 429,
+          headers: { ...headers, "Retry-After": String(retryAfterSeconds) },
+        },
+      );
+    }
+  }
 
   let context;
   try {

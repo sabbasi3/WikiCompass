@@ -124,6 +124,23 @@ export function ResultsShell({
     );
   }
 
+  if (state.kind === "rate_limited") {
+    return (
+      <Card className="border-amber-200 bg-amber-50 p-6 dark:border-amber-900/50 dark:bg-amber-950/30">
+        <h2 className="text-xl font-semibold text-amber-900 dark:text-amber-200">
+          Slow down a moment
+        </h2>
+        <p className="mt-2 text-sm text-amber-800 dark:text-amber-200/80">
+          {state.message} The limit is {state.limit} maps per minute per IP to
+          keep the demo affordable and the Wikipedia API happy.
+        </p>
+        <Button variant="outline" onClick={onReset} className="mt-4">
+          OK
+        </Button>
+      </Card>
+    );
+  }
+
   // state.kind === "error"
   return (
     <Card className="border-red-200 p-6 dark:border-red-900/50">

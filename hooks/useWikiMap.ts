@@ -35,6 +35,12 @@ export type WikiMapState =
         candidateLinks: Array<{ title: string; url: string }>;
       };
     }
+  | {
+      kind: "rate_limited";
+      message: string;
+      retryAfterSeconds: number;
+      limit: number;
+    }
   | { kind: "error"; message: string };
 
 export function useWikiMap() {
