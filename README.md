@@ -2,6 +2,9 @@
 
 **Turn any Wikipedia article into an AI-generated learning map.** A user enters a topic and a difficulty level; the app fetches bounded context from Wikipedia, asks an LLM to classify and order the concepts, and renders an interactive knowledge graph with a recommended learning path and per-node Wikipedia citations.
 
+**Live demo:** [wiki-path-alpha.vercel.app](https://wiki-path-alpha.vercel.app)
+**Repo:** [github.com/SafanAbbasi/WikiPath](https://github.com/SafanAbbasi/WikiPath)
+
 Built for Vercel's Solutions Architect Track B (AI Cloud) take-home assessment.
 
 ---
@@ -209,10 +212,16 @@ docs/
   model-benchmark.md             5-model comparison + decision rationale
 ```
 
+## Production hardening shipped
+
+- **Rate limit** — 10 req/min per IP, sliding window via `@upstash/ratelimit` against Vercel-hosted Upstash Redis. Verified live with a 12-request concurrent burst: 10 succeeded, 1 returned 429 at the configured threshold, 1 returned the `kind: "ai_failed"` graceful-degradation response (both AI Gateway primary + fallback were rate-limited downstream, route's 2-attempt retry caught it cleanly).
+- **Native Gateway model fallback** — `providerOptions.gateway.models` configured with `gemini-2.5-flash-lite` primary, `claude-haiku-4-5` fallback. Gateway routes transparently on transport failures.
+- **URL hallucination strip** — every generation's URLs are validated against the candidate set; any drift gets stripped and a user-visible warning is added.
+- **Graph integrity check** — post-AI validation that all edge endpoints exist, exactly one `main_topic`, node/path counts in range.
+
 ## Known limitations and production next steps
 
 - **Lead-section link ordering** — `prop=links` returns alphabetically. A proper fix interleaves lead-section + document-order body links by fetching wikitext. Roughly 2–3 hours of work.
-- **Rate limit auto-activates when Upstash is provisioned** — `lib/rate-limit.ts` runs 10 req/min/IP sliding window via `@upstash/ratelimit`, but only when `KV_REST_API_URL` + `KV_REST_API_TOKEN` are set. Without them the limiter is a no-op so local dev works without external dependencies. Provision Upstash from the Vercel marketplace and the limit activates on the next request.
 - **No streaming** — the AI call uses `generateObject` (blocking) with a 5-second skeleton. Upgrading to `streamObject` and progressive node rendering ("watch the graph build itself") would cut perceived latency to ~1 second. Designed for, not yet implemented.
 - **No persisted history** — every map is fresh. A "saved maps" feature with Postgres + a `share_id` is a 1-hour addition.
 - **No analytics** — production would log topics searched, generation latency, validation failure rate, cost per map.
