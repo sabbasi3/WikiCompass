@@ -141,8 +141,8 @@ AI_MODEL=google/gemini-2.5-flash-lite             # default
 AI_FALLBACK_MODELS=anthropic/claude-haiku-4-5     # comma-separated, in priority order
 
 # Rate limit (optional; the route degrades to a no-op if these are absent)
-UPSTASH_REDIS_REST_URL=...                        # auto-injected when Upstash is provisioned via Vercel
-UPSTASH_REDIS_REST_TOKEN=...                      # auto-injected when Upstash is provisioned via Vercel
+KV_REST_API_URL=...                               # auto-injected when Upstash is provisioned via Vercel
+KV_REST_API_TOKEN=...                             # auto-injected when Upstash is provisioned via Vercel
 ```
 
 ### Useful scripts
@@ -164,7 +164,7 @@ Designed for Vercel:
 2. Enable AI Gateway in the Vercel project (free tier is enough for the demo)
 3. Add `AI_GATEWAY_API_KEY` to the Vercel project env vars (it's auto-injected by the Gateway integration in most setups)
 4. Optionally set `AI_MODEL` and `AI_FALLBACK_MODELS` to override defaults
-5. In the Vercel dashboard → **Storage** → **Browse Storage** → pick **Upstash** (Serverless DB) → create a **Redis** database, connect to project. This auto-injects `UPSTASH_REDIS_REST_URL` + `UPSTASH_REDIS_REST_TOKEN` and activates the rate limit on the next request.
+5. In the Vercel dashboard → **Storage** → **Browse Storage** → pick **Upstash** (Serverless DB) → create a **Redis** database, connect to project. This auto-injects `KV_REST_API_URL` + `KV_REST_API_TOKEN` and activates the rate limit on the next request.
 6. `vercel --prod` (or push to `main` if you've enabled git integration)
 
 Note: Vercel previously white-labeled Upstash as "Vercel KV." That branding has been retired in favor of pointing users directly at the provider marketplace; same product, same SDK, slightly different setup flow.
@@ -212,7 +212,7 @@ docs/
 ## Known limitations and production next steps
 
 - **Lead-section link ordering** — `prop=links` returns alphabetically. A proper fix interleaves lead-section + document-order body links by fetching wikitext. Roughly 2–3 hours of work.
-- **Rate limit auto-activates when Upstash is provisioned** — `lib/rate-limit.ts` runs 10 req/min/IP sliding window via `@upstash/ratelimit`, but only when `UPSTASH_REDIS_REST_URL` + `UPSTASH_REDIS_REST_TOKEN` are set. Without them the limiter is a no-op so local dev works without external dependencies. Provision Upstash from the Vercel marketplace and the limit activates on the next request.
+- **Rate limit auto-activates when Upstash is provisioned** — `lib/rate-limit.ts` runs 10 req/min/IP sliding window via `@upstash/ratelimit`, but only when `KV_REST_API_URL` + `KV_REST_API_TOKEN` are set. Without them the limiter is a no-op so local dev works without external dependencies. Provision Upstash from the Vercel marketplace and the limit activates on the next request.
 - **No streaming** — the AI call uses `generateObject` (blocking) with a 5-second skeleton. Upgrading to `streamObject` and progressive node rendering ("watch the graph build itself") would cut perceived latency to ~1 second. Designed for, not yet implemented.
 - **No persisted history** — every map is fresh. A "saved maps" feature with Postgres + a `share_id` is a 1-hour addition.
 - **No analytics** — production would log topics searched, generation latency, validation failure rate, cost per map.
