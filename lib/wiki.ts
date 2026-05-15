@@ -1,6 +1,9 @@
+// Wikipedia data-access layer
+
 import { filterAndDedupeLinks } from "./context";
 
 const WIKI_BASE = "https://en.wikipedia.org";
+// Identify this app to Wikipedia for API etiquette and easier operator debugging.
 const WIKI_USER_AGENT =
   "WikiPath/1.0 (https://github.com/safanabbasi3/wikipath; learning-map-demo)";
 
@@ -50,6 +53,7 @@ export type WikiLinksAndCategories = {
 };
 
 async function wikiFetch(url: string, revalidate = 3600): Promise<Response> {
+  // Centralize Wikipedia request policy: shared headers + Next.js data revalidation.
   const init: RequestInit & { next?: { revalidate: number } } = {
     headers: {
       "User-Agent": WIKI_USER_AGENT,
@@ -61,6 +65,7 @@ async function wikiFetch(url: string, revalidate = 3600): Promise<Response> {
 }
 
 export function titleToUrl(title: string): string {
+  // Wikipedia article paths conventionally use underscores between words.
   const slug = title.replace(/\s+/g, "_");
   return `${WIKI_BASE}/wiki/${encodeURIComponent(slug)}`;
 }
@@ -172,6 +177,7 @@ export async function fetchWikipediaLinksAndCategories(
 export async function fetchWikipediaLeadLinks(
   title: string,
 ): Promise<{ title: string }[]> {
+  // Pull only lead-section links so core concepts can be prioritized later.
   const params = new URLSearchParams({
     action: "parse",
     format: "json",
@@ -202,14 +208,17 @@ export async function getWikipediaContext(
   userLevel: WikiContext["userLevel"],
   userGoal?: string,
 ): Promise<WikiContext> {
+  // Fetch summary + full links/categories + lead links in parallel to reduce latency.
   const [summary, lc, leadLinks] = await Promise.all([
     fetchWikipediaSummary(title),
     fetchWikipediaLinksAndCategories(title),
     fetchWikipediaLeadLinks(title),
   ]);
+  // Disambiguation is a deterministic UX choice; do not send ambiguous topics to the model.
   if (summary.type === "disambiguation") {
     throw new DisambiguationError(summary.title);
   }
+  // Prepend lead links before full-page links, then filter/dedupe to the candidate cap.
   const mergedLinks = [...leadLinks, ...lc.links];
   const candidateLinks = filterAndDedupeLinks(mergedLinks, 60);
   return {

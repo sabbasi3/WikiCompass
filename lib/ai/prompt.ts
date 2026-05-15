@@ -66,6 +66,8 @@ CRITICAL RULES — follow these strictly:
 
 12. Sensitive topics. For living-person biographies, controversial events, or contested topics, keep tone neutral, avoid moral judgment, and add a warning if appropriate.
 
+13. Personalization. If a userGoal is provided in the user message, the learningPath ordering and the whyThisPath paragraph MUST reflect that goal explicitly. Prefer nodes and steps relevant to the user's stated purpose. Reference the goal in whyThisPath so the user can see the effect. If no userGoal is provided, ignore this rule.
+
 Return only the structured object. No prose outside the schema.`;
 
   const linkLines = context.candidateLinks

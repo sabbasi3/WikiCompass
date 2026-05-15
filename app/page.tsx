@@ -10,18 +10,19 @@ export default function Home() {
   const { state, generate, reset } = useWikiMap();
   const [topic, setTopic] = useState("");
   const [level, setLevel] = useState<Level>("beginner");
+  const [userGoal, setUserGoal] = useState("");
 
   const isLoading = state.kind === "loading";
 
-  function handleSubmit(t: string, l: Level) {
+  function handleSubmit(t: string, l: Level, g: string) {
     setTopic(t);
     setLevel(l);
-    generate(t, l);
+    generate(t, l, g || undefined);
   }
 
   function handlePickCandidate(picked: string) {
     setTopic(picked);
-    generate(picked, level);
+    generate(picked, level, userGoal.trim() || undefined);
   }
 
   return (
@@ -37,8 +38,10 @@ export default function Home() {
         <TopicForm
           topic={topic}
           level={level}
+          userGoal={userGoal}
           onTopicChange={setTopic}
           onLevelChange={setLevel}
+          onUserGoalChange={setUserGoal}
           onSubmit={handleSubmit}
           disabled={isLoading}
         />

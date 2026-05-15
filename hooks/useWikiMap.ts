@@ -7,6 +7,7 @@ import type { WikiSearchResult } from "@/lib/wiki";
 
 export type Level = "beginner" | "intermediate" | "advanced";
 
+// telemetry/debug metadata returned by the API
 export type MapMeta = {
   latencyMs: number;
   usage?: { inputTokens?: number; outputTokens?: number; totalTokens?: number };

@@ -123,6 +123,17 @@ Per case, telemetry: wall-clock latency + token usage. Aggregate cost: ~$0.013 t
 
 Current baseline: **3/5 cases pass, 19/21 checks pass.** The two coverage failures (Photosynthesis missing "Light-dependent reactions" / "Carbon dioxide"; WWI sometimes missing "Treaty of Versailles" / "Trench warfare") share a known cause: `prop=links` returns alphabetically within each lead/body fetch, so alphabetically late terms get crowded out of the top 60. A proper fix would interleave lead links with document-order body links. Documented in the [wiki layer](lib/wiki.ts).
 
+## What are lead links?
+
+Lead links are the hyperlinks found in the lead section (the first paragraph or intro) of a Wikipedia article. They usually point to the most important related concepts for that topic.
+
+- In WikiPath, the backend fetches these links separately using the Wikipedia API's section=0 (lead) parameter.
+- These links are prioritized when building the candidate concept list for the learning map, because they’re more likely to be core concepts, not just tangentially related or citation links.
+- This helps the AI focus on the most relevant, foundational topics when generating the learning path and graph.
+
+**Why do this?**
+When building a learning map, surfacing the most relevant, foundational topics first makes the experience more useful and less noisy for learners. Lead links are a strong signal for that, since Wikipedia authors tend to link the most important concepts in the intro.
+
 ## Local setup
 
 ```bash
