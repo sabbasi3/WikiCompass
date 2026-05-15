@@ -43,28 +43,29 @@ Ambiguous topics like `Mercury` show a deterministic chooser (planet / element /
    │             Next.js App Router (route handlers)              │
    │                                                              │
    │   /api/wiki/search        /api/wiki/map                      │
-   │   ├─ searchWikipedia      ├─ getWikipediaContext             │
-   │                           │   ├─ summary  (REST)             │
-   │                           │   ├─ links    (Action API)       │
-   │                           │   └─ lead-section links (parse)  │
-   │                           │                                  │
-   │                           ├─ generateWikiMap                 │
-   │                           │   └─ generateObject (AI SDK)     │
-   │                           │                                  │
-   │                           └─ post-AI pipeline:               │
-   │                               ├─ stripHallucinatedUrls       │
-   │                               ├─ overrideGrounding           │
-   │                               └─ checkGraphIntegrity         │
-   └────────────────┬─────────────────────────────────┬───────────┘
-                    │                                 │
-                    ▼                                 ▼
-       ┌─────────────────────────┐       ┌─────────────────────────┐
-       │   Wikipedia public API  │       │  Vercel AI Gateway      │
-       │  (en.wikipedia.org)     │       │   primary: Flash-Lite   │
-       │   + 1h fetch revalidate │       │   fallback: Haiku 4.5   │
-       └─────────────────────────┘       │   (transparent routing) │
-                                         └────────────┬────────────┘
-                                                      │
+   │   ├─ searchWikipedia      ├─ rate-limit check (per-IP) ──────┼──┐
+   │                           ├─ getWikipediaContext             │  │
+   │                           │   ├─ summary  (REST)             │  │
+   │                           │   ├─ links    (Action API)       │  │
+   │                           │   └─ lead-section links (parse)  │  │
+   │                           │                                  │  │
+   │                           ├─ generateWikiMap                 │  │
+   │                           │   └─ generateObject (AI SDK)     │  │
+   │                           │                                  │  │
+   │                           └─ post-AI pipeline:               │  │
+   │                               ├─ stripHallucinatedUrls       │  │
+   │                               ├─ overrideGrounding           │  │
+   │                               └─ checkGraphIntegrity         │  │
+   └────────────────┬─────────────────────────────────┬───────────┘  │
+                    │                                 │              │
+                    ▼                                 ▼              ▼
+       ┌─────────────────────────┐       ┌─────────────────────────┐  ┌──────────────────┐
+       │   Wikipedia public API  │       │  Vercel AI Gateway      │  │ Upstash Redis    │
+       │  (en.wikipedia.org)     │       │   primary: Flash-Lite   │  │ (via Vercel      │
+       │   + 1h fetch revalidate │       │   fallback: Haiku 4.5   │  │  marketplace)    │
+       └─────────────────────────┘       │   (transparent routing) │  │  per-IP sliding  │
+                                         └────────────┬────────────┘  │  window counter  │
+                                                      │               └──────────────────┘
                                                       ▼
                                       ┌────────────────────────────┐
                                       │ google / anthropic / etc.  │
@@ -82,6 +83,8 @@ Ambiguous topics like `Mercury` show a deterministic chooser (planet / element /
 | **URL strip post-generation** | The prompt forbids hallucinated URLs, but the model can drift. After every generation, the route strips any `wikipediaUrl` not in the candidate set we fetched and adds a warning. Trust nothing from the model on URLs. |
 | **Lead-section-first link filter** | Heavily-cited articles (WWI, biographies) leak citation-author links into the top-60 candidates. Prepending lead-section links (intro paragraph only) puts core concepts at the top. Surfaced and quantified by the evals. |
 | **Ambiguity detected deterministically, not by the model** | `Mercury` summary returns `type: "disambiguation"` → server throws `DisambiguationError` → route returns 409 with candidate list → frontend renders chooser. The model never has to pick between Mercury planet vs element. |
+| **Upstash for the rate limiter (not "Official Redis for Vercel")** | Functionally either provider would work — both are HTTPS-Redis designed for serverless. The deciding factor is `@upstash/ratelimit`: a purpose-built rate-limit SDK with sliding-window, fixed-window, and token-bucket algorithms, multi-region support, and analytics. Redis Inc.'s offering has no equivalent SDK, so I'd be rolling my own sliding window over raw INCR/EXPIRE (race conditions on increment-then-expire, TTL boundaries). For a complex Redis workload using JSON / search / vector modules, Redis Inc. would tip the choice the other way. |
+| **In-memory rate-limit rejected** | A single-instance counter breaks the moment Vercel autoscales — each serverless instance has its own memory, so the effective limit multiplies by instance count. Vercel KV (now Upstash via marketplace) keeps the counter in shared external state so the limit holds across the fleet. |
 
 ## Fallback behavior
 
@@ -92,6 +95,7 @@ Ambiguous topics like `Mercury` show a deterministic chooser (planet / element /
 | No Wikipedia article | 404 | `{ kind: "not_found", title }` | Friendly empty state + Try Again |
 | AI fails twice | 502 | `{ kind: "ai_failed", message, fallback: {title, summary, candidateLinks} }` | Raw Wikipedia summary + candidate link list (degraded but useful) |
 | Hallucinated URL in output | 200 | Map with stripped URLs + `warnings` array | Map renders normally; warnings card surfaces the issue |
+| Rate limit exceeded | 429 | `{ kind: "rate_limited", message, retryAfterSeconds, limit }` + `Retry-After` header | Amber "Slow down a moment" card with the limit and a friendly explanation |
 | Schema violation by model | retried once internally | (Caller never sees it) | (Caller never sees it) |
 | Gateway transport failure | (Gateway tries next model) | (Caller never sees it) | (Caller never sees it) |
 
@@ -135,6 +139,10 @@ Open http://localhost:3000.
 AI_GATEWAY_API_KEY=...                            # required
 AI_MODEL=google/gemini-2.5-flash-lite             # default
 AI_FALLBACK_MODELS=anthropic/claude-haiku-4-5     # comma-separated, in priority order
+
+# Rate limit (optional; the route degrades to a no-op if these are absent)
+UPSTASH_REDIS_REST_URL=...                        # auto-injected when Upstash is provisioned via Vercel
+UPSTASH_REDIS_REST_TOKEN=...                      # auto-injected when Upstash is provisioned via Vercel
 ```
 
 ### Useful scripts
@@ -156,7 +164,10 @@ Designed for Vercel:
 2. Enable AI Gateway in the Vercel project (free tier is enough for the demo)
 3. Add `AI_GATEWAY_API_KEY` to the Vercel project env vars (it's auto-injected by the Gateway integration in most setups)
 4. Optionally set `AI_MODEL` and `AI_FALLBACK_MODELS` to override defaults
-5. `vercel --prod` (or push to `main` if you've enabled git integration)
+5. In the Vercel dashboard → **Storage** → **Browse Storage** → pick **Upstash** (Serverless DB) → create a **Redis** database, connect to project. This auto-injects `UPSTASH_REDIS_REST_URL` + `UPSTASH_REDIS_REST_TOKEN` and activates the rate limit on the next request.
+6. `vercel --prod` (or push to `main` if you've enabled git integration)
+
+Note: Vercel previously white-labeled Upstash as "Vercel KV." That branding has been retired in favor of pointing users directly at the provider marketplace; same product, same SDK, slightly different setup flow.
 
 The first deploy will compile the route handlers. Cold-start latency for `/api/wiki/map` should be 5–6s end-to-end with Flash-Lite (vs. 15–30s seen in `next dev` due to Turbopack's per-request route compilation).
 
@@ -201,7 +212,7 @@ docs/
 ## Known limitations and production next steps
 
 - **Lead-section link ordering** — `prop=links` returns alphabetically. A proper fix interleaves lead-section + document-order body links by fetching wikitext. Roughly 2–3 hours of work.
-- **No rate limit on `/api/wiki/map`** — a real production deployment would add Upstash Rate Limit (~10 minutes to add) to bound per-IP map generations.
+- **Rate limit auto-activates when Upstash is provisioned** — `lib/rate-limit.ts` runs 10 req/min/IP sliding window via `@upstash/ratelimit`, but only when `UPSTASH_REDIS_REST_URL` + `UPSTASH_REDIS_REST_TOKEN` are set. Without them the limiter is a no-op so local dev works without external dependencies. Provision Upstash from the Vercel marketplace and the limit activates on the next request.
 - **No streaming** — the AI call uses `generateObject` (blocking) with a 5-second skeleton. Upgrading to `streamObject` and progressive node rendering ("watch the graph build itself") would cut perceived latency to ~1 second. Designed for, not yet implemented.
 - **No persisted history** — every map is fresh. A "saved maps" feature with Postgres + a `share_id` is a 1-hour addition.
 - **No analytics** — production would log topics searched, generation latency, validation failure rate, cost per map.
