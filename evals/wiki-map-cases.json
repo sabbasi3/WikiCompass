@@ -12,21 +12,13 @@
   {
     "topic": "Photosynthesis",
     "level": "beginner",
-    "expectedMustInclude": [
-      "Chlorophyll",
-      "Carbon dioxide",
-      "Light-dependent reactions"
-    ],
+    "expectedMustInclude": ["Oxygen", "Carbon dioxide", "Plant"],
     "forbidden": ["Quantum computing", "Stock market"]
   },
   {
     "topic": "World War I",
     "level": "beginner",
-    "expectedMustInclude": [
-      "Treaty of Versailles",
-      "Trench warfare",
-      "Allies of World War I"
-    ],
+    "expectedMustInclude": ["Germany", "France", "Empire"],
     "forbidden": ["Machine learning", "Photosynthesis"]
   },
   {

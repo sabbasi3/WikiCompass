@@ -8,11 +8,11 @@ Each model was called once with identical inputs:
 
 - **Topic:** Machine learning, level: beginner
 - **Prompt:** `lib/ai/prompt.ts` (system + user, ~2.5K input tokens)
-- **Schema:** `wikiMapSchema` in `lib/ai/schema.ts` via AI SDK `generateObject` (strict structured-output mode)
+- **Schema:** `wikiMapSchema` in `lib/ai/schema.ts` via AI SDK `generateText` with `Output.object` (strict structured-output mode)
 - **Temperature:** 0.2
 - **OpenAI reasoning models:** `providerOptions.openai.reasoningEffort = "minimal"`
 
-Per-model latency is wall-clock from the `generateObject` call. Cost figures use rough public per-token pricing as of 2026-05 and the actual input/output tokens from each run.
+Per-model latency is wall-clock from the `generateText` call. Cost figures use rough public per-token pricing as of 2026-05 and the actual input/output tokens from each run.
 
 ## Results
 
@@ -57,8 +57,9 @@ Wired via the AI SDK's native Gateway `models` provider option — the Gateway t
 
 ```ts
 // lib/ai/generateWikiMap.ts
-generateObject({
+generateText({
   model: gateway(AI_MODEL),
+  output: Output.object({ schema: wikiMapSchema }),
   providerOptions: {
     gateway: { models: [AI_MODEL, ...AI_FALLBACK_MODELS] },
   },
@@ -73,7 +74,7 @@ The chain is configured via env vars:
 
 This means we pay Flash-Lite pricing on the happy path, and degrade gracefully to Haiku if Flash-Lite times out, hits a rate limit, or the provider is unavailable. The application doesn't see the failure — the Gateway handles the routing transparently. Observability lives in the Vercel AI Gateway dashboard.
 
-In addition, the `/api/wiki/map` route does one application-side retry on `generateObject` failure for the *application-layer* error case (e.g., schema validation failure where the response was successful but malformed). The two retry layers compose: Gateway handles transport, application handles content.
+In addition, the `/api/wiki/map` route does one application-side retry on `generateText` failure for the *application-layer* error case (e.g., schema validation failure where the response was successful but malformed). The two retry layers compose: Gateway handles transport, application handles content.
 
 ## Caveats and what we did *not* test
 

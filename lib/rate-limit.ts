@@ -16,8 +16,8 @@ export const mapRateLimit = kvConfigured
   : null;
 
 export function getClientIp(req: Request): string {
-  const vercelIp = req.headers.get("x-vercel-forwarded-for");
-  if (vercelIp) return vercelIp.split(",")[0].trim();
+  const clientIp = req.headers.get("x-vercel-forwarded-for");
+  if (clientIp) return clientIp.split(",")[0].trim();
   const forwarded = req.headers.get("x-forwarded-for");
   if (forwarded) return forwarded.split(",")[0].trim();
   const real = req.headers.get("x-real-ip");
