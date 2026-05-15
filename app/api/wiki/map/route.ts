@@ -120,17 +120,19 @@ export async function POST(req: Request) {
   const allowed = buildAllowedUrlSet(context);
   const stripResult = stripHallucinatedUrls(map, allowed);
   map = stripResult.map;
-  if (
-    stripResult.strippedNodeUrls.length + stripResult.strippedPathUrls.length >
-    0
-  ) {
-    map = {
-      ...map,
-      warnings: [
-        ...map.warnings,
-        `Removed ${stripResult.strippedNodeUrls.length + stripResult.strippedPathUrls.length} hallucinated URL(s) before rendering.`,
-      ],
-    };
+  // Strip silently from the user's perspective — the map still renders
+  // (with null URLs replaced). Log to server console so we capture the
+  // pattern of hallucinations in Vercel function logs / dev terminal.
+  const totalStripped =
+    stripResult.strippedNodeUrls.length + stripResult.strippedPathUrls.length;
+  if (totalStripped > 0) {
+    console.warn(
+      `[wiki/map] stripped ${totalStripped} hallucinated URL(s) for topic "${context.title}":`,
+      {
+        nodes: stripResult.strippedNodeUrls,
+        path: stripResult.strippedPathUrls,
+      },
+    );
   }
 
   map = overrideGrounding(map, context);
