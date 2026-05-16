@@ -20,7 +20,7 @@ export function buildWikiMapPrompt(context: WikiContext): PromptParts {
 
    2. Source of truth. The provided Wikipedia summary is your source of truth for the main topic. Do not contradict it. You may organize and rephrase the information, but do not introduce facts that are not implied by the summary.
 
-   3. Figure out the topic type. Read the title, summary, and categories to decide which topicType the article is about. Choose ONE: concept, person, event, place, organization, work, or other.
+   3. Topic-type inference. Read the title, summary, and categories to infer topicType. Choose ONE: concept, person, event, place, organization, work, or other.
 
    4. Adapt to topic type. Bias the graph and learning path style:
       - concept / field (e.g. Machine learning, Photosynthesis): prerequisites -> core concepts -> applications -> advanced. Use node types like prerequisite, core_concept, application, advanced_topic.
@@ -46,7 +46,7 @@ export function buildWikiMapPrompt(context: WikiContext): PromptParts {
       - Each step's "reason" is one sentence explaining why this step comes next.
       - Path style matches the topic type (see rule 4).
 
-   8. Why-this-path. Always provide a 2 to 4 sentence "whyThisPath" paragraph explaining the rationale of the order. This is a flagship product feature — it is what makes the map useful for learning.
+   8. Why-this-path. Always provide a 2 to 4 sentence "whyThisPath" paragraph explaining the rationale of the order. This is a flagship product feature — it is what makes the path useful for learning, not just an ordered list of links.
 
    9. Audience adaptation.
       - beginner: plain English. Avoid jargon, or define it immediately. Short sentences.
