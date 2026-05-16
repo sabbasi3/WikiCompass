@@ -50,7 +50,18 @@
   {
     "topic": "Mercury",
     "level": "beginner",
-    "expectedBehavior": "ambiguous"
+    "expectedBehavior": "ambiguous",
+    "expectedCandidatesInclude": [
+      "Mercury (planet)",
+      "Mercury (element)",
+      "Freddie Mercury"
+    ]
+  },
+  {
+    "topic": "ML",
+    "level": "beginner",
+    "expectedBehavior": "ambiguous",
+    "expectedCandidatesInclude": ["Machine learning"]
   },
   {
     "topic": "qzqzqzqz-not-a-real-topic-12345",

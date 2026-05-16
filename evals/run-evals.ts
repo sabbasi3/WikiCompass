@@ -6,6 +6,7 @@ import { AI_MODEL } from "../lib/ai/model";
 import {
   DisambiguationError,
   WikipediaNotFoundError,
+  fetchAmbiguousCandidates,
   getWikipediaContext,
   suggestWikipediaTitles,
 } from "../lib/wiki";
@@ -27,6 +28,11 @@ type EvalCase = {
   // Only meaningful when expectedBehavior is "not_found": verifies the
   // "Did you mean...?" feature returns useful suggestions for a typo.
   expectedSuggestionsInclude?: string[];
+  // Only meaningful when expectedBehavior is "ambiguous": verifies the
+  // disambiguation merge surfaces specific known-good candidates
+  // (e.g. "Machine learning" for "ML", or "Mercury (element)" for
+  // "Mercury") — the cases that motivated the merge in the first place.
+  expectedCandidatesInclude?: string[];
 };
 
 // Checks are either "gating" (default) — they contribute to case pass/fail
@@ -63,6 +69,7 @@ async function evalCase(c: EvalCase): Promise<CaseResult> {
   const t0 = Date.now();
 
   if (c.expectedBehavior === "ambiguous") {
+    let disambigTitle: string | null = null;
     try {
       await getWikipediaContext(c.topic, c.level);
       checks.push({
@@ -72,6 +79,7 @@ async function evalCase(c: EvalCase): Promise<CaseResult> {
       });
     } catch (err) {
       if (err instanceof DisambiguationError) {
+        disambigTitle = err.title;
         checks.push({
           name: "ambiguous regression",
           ok: true,
@@ -86,6 +94,26 @@ async function evalCase(c: EvalCase): Promise<CaseResult> {
           detail: `expected DisambiguationError, got ${name}: ${msg}`,
         });
       }
+    }
+    // Candidate-coverage assertion: verify the merge surfaces known-
+    // good interpretations. Only runs when the case declares them
+    // and DisambiguationError fired (we have a canonical title).
+    if (
+      disambigTitle &&
+      c.expectedCandidatesInclude &&
+      c.expectedCandidatesInclude.length > 0
+    ) {
+      const candidates = await fetchAmbiguousCandidates(disambigTitle, 15);
+      const titles = new Set(candidates.map((cn) => cn.title));
+      const missing = c.expectedCandidatesInclude.filter((t) => !titles.has(t));
+      checks.push({
+        name: "candidate coverage",
+        ok: missing.length === 0,
+        detail:
+          missing.length === 0
+            ? `all ${c.expectedCandidatesInclude.length} expected candidate(s) present (${candidates.length} total)`
+            : `missing: ${missing.join(", ")} (got: ${candidates.map((cn) => cn.title).join(", ")})`,
+      });
     }
     return { topic: c.topic, level: c.level, ms: Date.now() - t0, checks };
   }

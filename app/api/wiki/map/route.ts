@@ -3,8 +3,8 @@ import { NextResponse } from "next/server";
 import {
   DisambiguationError,
   WikipediaNotFoundError,
+  fetchAmbiguousCandidates,
   getWikipediaContext,
-  searchWikipedia,
   suggestWikipediaTitles,
 } from "@/lib/wiki";
 import { generateWikiMap } from "@/lib/ai/generateWikiMap";
@@ -54,7 +54,9 @@ export async function POST(req: Request) {
     context = await getWikipediaContext(topic, level, userGoal);
   } catch (err) {
     if (err instanceof DisambiguationError) {
-      const candidates = await searchWikipedia(topic, 8).catch(() => []);
+      const candidates = await fetchAmbiguousCandidates(err.title, 15).catch(
+        () => [],
+      );
       return NextResponse.json(
         { kind: "disambiguation", title: err.title, candidates },
         { status: 409, headers: rateHeaders },

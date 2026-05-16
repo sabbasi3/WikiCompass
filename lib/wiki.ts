@@ -103,6 +103,57 @@ export async function searchWikipedia(
   }));
 }
 
+// Merge two sources for disambiguation candidates and return up to
+// `max` unique results. Search results take top slots (better
+// quality ranking — surfaces "Mercury (element)" and "Freddie Mercury"
+// for "Mercury"). Disambig page links fill remaining slots so
+// abbreviation-style entries like "Machine learning" on the ML page
+// (which strict search can't find — no title token match) still make
+// it in. Single source of truth for the route + eval to share.
+export async function fetchAmbiguousCandidates(
+  title: string,
+  max = 15,
+): Promise<WikiSearchResult[]> {
+  const [search, page] = await Promise.all([
+    searchWikipedia(title, 8).catch(() => []),
+    fetchDisambiguationCandidates(title, 15).catch(() => []),
+  ]);
+  const seen = new Set<string>();
+  const out: WikiSearchResult[] = [];
+  for (const r of [...search, ...page]) {
+    if (seen.has(r.title)) continue;
+    seen.add(r.title);
+    out.push(r);
+    if (out.length >= max) break;
+  }
+  return out;
+}
+
+// For a known disambiguation page, fetch its actual link list rather
+// than running a string-match search. The page's links are human-
+// curated by Wikipedia editors and include things that don't string-
+// match the title — e.g. "Machine learning" is listed on the "/wiki/ML"
+// disambiguation page even though "ML" doesn't appear in the string
+// "Machine learning". Strict search misses these; this doesn't.
+export async function fetchDisambiguationCandidates(
+  title: string,
+  max = 10,
+): Promise<WikiSearchResult[]> {
+  const lc = await fetchWikipediaLinksAndCategories(title).catch(() => ({
+    links: [] as { title: string }[],
+    categories: [] as string[],
+  }));
+  // Reuse our standard junk filter (strips identifiers, year articles,
+  // other disambig pages, etc.) and cap at `max`. The cap is generous
+  // because disambig pages list 30+ links and Wikipedia's prop=links
+  // returns alphabetically — without enough headroom, alphabetically-
+  // late entries like "Machine learning" fall off.
+  return filterAndDedupeLinks(lc.links, max).map((l) => ({
+    title: l.title,
+    url: l.url,
+  }));
+}
+
 // "Did you mean..."-style search. Uses Wikipedia's opensearch API,
 // which is fuzzy/typo-tolerant ("Photosynthsis" -> "Photosynthesis").
 // The strict /v1/search/page endpoint used by searchWikipedia() returns
