@@ -20,7 +20,7 @@ const lora = Lora({
 });
 
 export const metadata: Metadata = {
-  title: "WikiPath — AI learning maps from Wikipedia",
+  title: "WikiCompass — AI learning maps from Wikipedia",
   description:
     "Turn any Wikipedia topic into a structured learning map: prerequisites, core concepts, advanced topics, and a recommended learning path.",
 };

@@ -12,7 +12,7 @@ export const mapRateLimit = kvConfigured
       redis: new Redis({ url: url!, token: token! }),
       limiter: Ratelimit.slidingWindow(10, "1 m"),
       analytics: true,
-      prefix: "wikipath:map",
+      prefix: "wikicompass:map",
     })
   : null;
 

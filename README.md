@@ -1,9 +1,9 @@
-# WikiPath
+# WikiCompass
 
 **Turn any Wikipedia article into an AI-generated learning map.** A user enters a topic and a difficulty level; the app fetches bounded context from Wikipedia, asks an LLM to classify and order the concepts, and renders an interactive knowledge graph with a recommended learning path and per-node Wikipedia citations.
 
-**Live demo:** [wiki-path-alpha.vercel.app](https://wiki-path-alpha.vercel.app)
-**Repo:** [github.com/SafanAbbasi/WikiPath](https://github.com/SafanAbbasi/WikiPath)
+**Live demo:** [wiki-compass-alpha.vercel.app](https://wiki-compass-alpha.vercel.app)
+**Repo:** [github.com/SafanAbbasi/WikiCompass](https://github.com/SafanAbbasi/WikiCompass)
 
 Built for Vercel's Solutions Architect Track B (AI Cloud) take-home assessment.
 
@@ -13,7 +13,7 @@ Built for Vercel's Solutions Architect Track B (AI Cloud) take-home assessment.
 
 Wikipedia is the best public reference source we have, but it isn't optimized for *learning*. Articles are dense, links are noisy, and a beginner reading "Machine learning" can't tell which of the article's 400 links are prerequisites, which are core, and which are advanced follow-ups.
 
-WikiPath restructures that reference data into a guided learning experience for three audiences:
+WikiCompass restructures that reference data into a guided learning experience for three audiences:
 
 - **Students** trying to learn a topic quickly
 - **Knowledge workers** researching unfamiliar domains
@@ -132,7 +132,7 @@ Current baseline: **5/5 cases pass, 17/17 gating checks pass**, plus 4 `[INFO]` 
 
 Lead links are the hyperlinks found in the lead section (the first paragraph or intro) of a Wikipedia article. They usually point to the most important related concepts for that topic.
 
-- In WikiPath, the backend fetches these links separately using the Wikipedia API's section=0 (lead) parameter.
+- In WikiCompass, the backend fetches these links separately using the Wikipedia API's section=0 (lead) parameter.
 - These links are prioritized when building the candidate concept list for the learning map, because they’re more likely to be core concepts, not just tangentially related or citation links.
 - This helps the AI focus on the most relevant, foundational topics when generating the learning path and graph.
 
@@ -143,7 +143,7 @@ When building a learning map, surfacing the most relevant, foundational topics f
 
 ```bash
 git clone <repo>
-cd wikipath
+cd wikicompass    # or whatever the cloned folder is named
 npm install
 cp .env.example .env.local
 # fill in AI_GATEWAY_API_KEY from your Vercel project

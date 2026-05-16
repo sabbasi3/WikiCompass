@@ -5,7 +5,7 @@ import { filterAndDedupeLinks } from "./link-filter";
 const WIKI_BASE = "https://en.wikipedia.org";
 // Identify this app to Wikipedia for API etiquette and easier operator debugging.
 const WIKI_USER_AGENT =
-  "WikiPath/1.0 (https://github.com/safanabbasi3/wikipath; learning-map-demo)";
+  "WikiCompass/1.0 (https://github.com/SafanAbbasi/WikiCompass; learning-map-demo)";
 
 export class DisambiguationError extends Error {
   constructor(public readonly title: string) {

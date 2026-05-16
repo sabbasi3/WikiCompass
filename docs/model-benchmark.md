@@ -1,6 +1,6 @@
 # Model benchmark
 
-Comparison of five AI Gateway models on the WikiPath generation task. Used to inform model selection and the production fallback-routing story.
+Comparison of five AI Gateway models on the WikiCompass generation task. Used to inform model selection and the production fallback-routing story.
 
 ## Methodology
 
