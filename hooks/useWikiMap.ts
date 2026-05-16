@@ -25,7 +25,7 @@ export type WikiMapState =
   | { kind: "loading"; topic: string; level: Level }
   | { kind: "map"; map: WikiMap; meta: MapMeta }
   | { kind: "disambiguation"; title: string; candidates: WikiSearchResult[] }
-  | { kind: "not_found"; title: string }
+  | { kind: "not_found"; title: string; suggestions: WikiSearchResult[] }
   | {
       kind: "ai_failed";
       message: string;

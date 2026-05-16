@@ -65,16 +65,40 @@ export function ResultsByState({
   }
 
   if (state.kind === "not_found") {
+    const hasSuggestions = state.suggestions && state.suggestions.length > 0;
     return (
       <section className={CARD}>
         <h2 className="font-serif text-xl font-semibold tracking-tight text-foreground">
           No Wikipedia article for &ldquo;{state.title}&rdquo;
         </h2>
         <p className="mt-2 text-sm text-muted-foreground">
-          Check spelling or try a different topic.
+          {hasSuggestions
+            ? "Did you mean one of these?"
+            : "Check spelling or try a different topic."}
         </p>
+        {hasSuggestions && (
+          <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2">
+            {state.suggestions.map((s) => (
+              <button
+                key={s.title}
+                type="button"
+                onClick={() => onPickCandidate(s.title)}
+                className="rounded-lg border border-border bg-background p-3 text-left transition-colors hover:border-emerald-500 hover:bg-emerald-50/40"
+              >
+                <div className="font-serif font-medium text-foreground">
+                  {s.title}
+                </div>
+                {s.description && (
+                  <div className="mt-1 text-sm text-muted-foreground">
+                    {s.description}
+                  </div>
+                )}
+              </button>
+            ))}
+          </div>
+        )}
         <Button onClick={onReset} className={RESET_BTN_CLASSES}>
-          Try again
+          Try a different topic
         </Button>
       </section>
     );

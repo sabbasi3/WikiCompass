@@ -5,6 +5,7 @@ import {
   WikipediaNotFoundError,
   getWikipediaContext,
   searchWikipedia,
+  suggestWikipediaTitles,
 } from "@/lib/wiki";
 import { generateWikiMap } from "@/lib/ai/generateWikiMap";
 import { checkRateLimit } from "@/lib/rate-limit";
@@ -60,8 +61,15 @@ export async function POST(req: Request) {
       );
     }
     if (err instanceof WikipediaNotFoundError) {
+      // Surface up to 5 "Did you mean..." suggestions via Wikipedia's
+      // opensearch (fuzzy/typo-tolerant) so a misspelling doesn't dead-
+      // end the user. Soft-fail on search error — we still want to
+      // return the 404 even if the suggestion lookup dies.
+      const suggestions = await suggestWikipediaTitles(topic, 5).catch(
+        () => [],
+      );
       return NextResponse.json(
-        { kind: "not_found", title: err.title },
+        { kind: "not_found", title: err.title, suggestions },
         { status: 404, headers: rateHeaders },
       );
     }

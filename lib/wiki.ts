@@ -103,6 +103,38 @@ export async function searchWikipedia(
   }));
 }
 
+// "Did you mean..."-style search. Uses Wikipedia's opensearch API,
+// which is fuzzy/typo-tolerant ("Photosynthsis" -> "Photosynthesis").
+// The strict /v1/search/page endpoint used by searchWikipedia() returns
+// zero results for typos, so we use this when we already know the title
+// didn't resolve (404 path).
+export async function suggestWikipediaTitles(
+  query: string,
+  limit = 5,
+): Promise<WikiSearchResult[]> {
+  const q = query.trim();
+  if (!q) return [];
+  const url = `${WIKI_BASE}/w/api.php?action=opensearch&search=${encodeURIComponent(q)}&limit=${limit}&format=json`;
+  const res = await wikiFetch(url);
+  if (!res.ok) return [];
+  // opensearch shape: [query, titles[], descriptions[], urls[]]
+  const data = (await res.json()) as
+    | [string, string[], string[], string[]]
+    | unknown;
+  if (!Array.isArray(data) || data.length < 4) return [];
+  const [, titles, descriptions, urls] = data as [
+    string,
+    string[],
+    string[],
+    string[],
+  ];
+  return titles.map((title, i) => ({
+    title,
+    description: descriptions[i] || undefined,
+    url: urls[i],
+  }));
+}
+
 export async function fetchWikipediaSummary(
   title: string,
 ): Promise<WikiSummary> {
