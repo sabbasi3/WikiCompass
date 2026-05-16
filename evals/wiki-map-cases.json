@@ -10,6 +10,26 @@
     "forbidden": ["World War II", "Cooking", "Basketball"]
   },
   {
+    "topic": "Machine learning",
+    "level": "intermediate",
+    "expectedMustInclude": [
+      "Artificial intelligence",
+      "Supervised learning",
+      "Neural network"
+    ],
+    "forbidden": ["World War II", "Cooking", "Basketball"]
+  },
+  {
+    "topic": "Machine learning",
+    "level": "advanced",
+    "expectedMustInclude": [
+      "Artificial intelligence",
+      "Supervised learning",
+      "Neural network"
+    ],
+    "forbidden": ["World War II", "Cooking", "Basketball"]
+  },
+  {
     "topic": "Photosynthesis",
     "level": "beginner",
     "expectedMustInclude": ["Oxygen", "Carbon dioxide", "Plant"],

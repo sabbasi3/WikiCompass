@@ -43,6 +43,7 @@ type CaseResult = {
   ms: number;
   tokens?: number;
   checks: Check[];
+  whyThisPath?: string; // captured for cross-level audience-adaptation diff
 };
 
 function bar(c = "=", n = 72) {
@@ -228,7 +229,19 @@ async function evalCase(c: EvalCase): Promise<CaseResult> {
     ms: Date.now() - t0,
     tokens: result.usage?.totalTokens,
     checks,
+    whyThisPath: map.whyThisPath,
   };
+}
+
+// Word-set Jaccard similarity. Returns 1 when identical, 0 when disjoint.
+function jaccardSim(a: string, b: string): number {
+  const tok = (s: string) =>
+    new Set(s.toLowerCase().split(/\s+/).filter(Boolean));
+  const sa = tok(a);
+  const sb = tok(b);
+  const inter = [...sa].filter((x) => sb.has(x)).length;
+  const union = new Set([...sa, ...sb]).size;
+  return union === 0 ? 1 : inter / union;
 }
 
 async function main() {
@@ -256,6 +269,41 @@ async function main() {
     }
     const tk = r.tokens ? `, ${r.tokens.toLocaleString()} tokens` : "";
     console.log(`         ${r.ms}ms${tk}`);
+    console.log();
+  }
+
+  // Cross-level audience-adaptation check: when the same topic is run
+  // at multiple levels, their whyThisPath rationales should differ
+  // meaningfully. If they don't, rule 9 may have silently broken (e.g.,
+  // the audienceLevel param stopped reaching the prompt). Reported as
+  // INFO, not gating — adaptation is qualitative, so we only fail on
+  // the catastrophic case (>= 0.85 similarity).
+  const SIMILARITY_THRESHOLD = 0.85;
+  const byTopic = new Map<string, CaseResult[]>();
+  for (const r of results) {
+    if (r.whyThisPath) {
+      byTopic.set(r.topic, [...(byTopic.get(r.topic) ?? []), r]);
+    }
+  }
+  for (const [topic, group] of byTopic) {
+    if (group.length < 2) continue;
+    let maxSim = 0;
+    for (let i = 0; i < group.length; i++) {
+      for (let j = i + 1; j < group.length; j++) {
+        maxSim = Math.max(
+          maxSim,
+          jaccardSim(group[i].whyThisPath!, group[j].whyThisPath!),
+        );
+      }
+    }
+    const ok = maxSim < SIMILARITY_THRESHOLD;
+    console.log(bar());
+    console.log(`CROSS-LEVEL: ${topic} (${group.length} levels)`);
+    console.log(bar());
+    const mark = ok ? "[OK]  " : "[FAIL]";
+    console.log(
+      `  ${mark} audience adaptation     max whyThisPath similarity ${maxSim.toFixed(2)} (threshold < ${SIMILARITY_THRESHOLD})`,
+    );
     console.log();
   }
 
