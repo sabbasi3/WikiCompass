@@ -31,5 +31,10 @@
     "topic": "Mercury",
     "level": "beginner",
     "expectedBehavior": "ambiguous"
+  },
+  {
+    "topic": "qzqzqzqz-not-a-real-topic-12345",
+    "level": "beginner",
+    "expectedBehavior": "not_found"
   }
 ]

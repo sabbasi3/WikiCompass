@@ -3,7 +3,11 @@ import path from "node:path";
 
 import { generateWikiMap } from "../lib/ai/generateWikiMap";
 import { AI_MODEL } from "../lib/ai/model";
-import { DisambiguationError, getWikipediaContext } from "../lib/wiki";
+import {
+  DisambiguationError,
+  WikipediaNotFoundError,
+  getWikipediaContext,
+} from "../lib/wiki";
 import {
   buildAllowedUrlSet,
   checkGraphIntegrity,
@@ -18,7 +22,7 @@ type EvalCase = {
   level: Level;
   expectedMustInclude?: string[];
   forbidden?: string[];
-  expectedBehavior?: "ambiguous";
+  expectedBehavior?: "ambiguous" | "not_found";
 };
 
 // Checks are either "gating" (default) — they contribute to case pass/fail
@@ -75,6 +79,34 @@ async function evalCase(c: EvalCase): Promise<CaseResult> {
           name: "ambiguous regression",
           ok: false,
           detail: `expected DisambiguationError, got ${name}: ${msg}`,
+        });
+      }
+    }
+    return { topic: c.topic, level: c.level, ms: Date.now() - t0, checks };
+  }
+
+  if (c.expectedBehavior === "not_found") {
+    try {
+      await getWikipediaContext(c.topic, c.level);
+      checks.push({
+        name: "not_found regression",
+        ok: false,
+        detail: "expected WikipediaNotFoundError, got a clean context",
+      });
+    } catch (err) {
+      if (err instanceof WikipediaNotFoundError) {
+        checks.push({
+          name: "not_found regression",
+          ok: true,
+          detail: "WikipediaNotFoundError thrown — UI will show 404 card",
+        });
+      } else {
+        const name = err instanceof Error ? err.constructor.name : typeof err;
+        const msg = err instanceof Error ? err.message : String(err);
+        checks.push({
+          name: "not_found regression",
+          ok: false,
+          detail: `expected WikipediaNotFoundError, got ${name}: ${msg}`,
         });
       }
     }
