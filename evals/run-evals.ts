@@ -7,6 +7,7 @@ import {
   DisambiguationError,
   WikipediaNotFoundError,
   getWikipediaContext,
+  suggestWikipediaTitles,
 } from "../lib/wiki";
 import {
   buildAllowedUrlSet,
@@ -23,6 +24,9 @@ type EvalCase = {
   expectedMustInclude?: string[];
   forbidden?: string[];
   expectedBehavior?: "ambiguous" | "not_found";
+  // Only meaningful when expectedBehavior is "not_found": verifies the
+  // "Did you mean...?" feature returns useful suggestions for a typo.
+  expectedSuggestionsInclude?: string[];
 };
 
 // Checks are either "gating" (default) — they contribute to case pass/fail
@@ -110,6 +114,29 @@ async function evalCase(c: EvalCase): Promise<CaseResult> {
           detail: `expected WikipediaNotFoundError, got ${name}: ${msg}`,
         });
       }
+    }
+    // "Did you mean...?" assertion: typo cases should produce useful
+    // suggestions via the opensearch fallback. Only runs when the case
+    // explicitly declares expected suggestions.
+    if (
+      c.expectedSuggestionsInclude &&
+      c.expectedSuggestionsInclude.length > 0
+    ) {
+      const suggestions = await suggestWikipediaTitles(c.topic, 5).catch(
+        () => [],
+      );
+      const titles = new Set(suggestions.map((s) => s.title));
+      const missing = c.expectedSuggestionsInclude.filter(
+        (t) => !titles.has(t),
+      );
+      checks.push({
+        name: "did-you-mean",
+        ok: missing.length === 0,
+        detail:
+          missing.length === 0
+            ? `all ${c.expectedSuggestionsInclude.length} expected suggestion(s) present (got: ${suggestions.map((s) => s.title).join(", ")})`
+            : `missing suggestion(s): ${missing.join(", ")} (got: ${suggestions.map((s) => s.title).join(", ") || "none"})`,
+      });
     }
     return { topic: c.topic, level: c.level, ms: Date.now() - t0, checks };
   }

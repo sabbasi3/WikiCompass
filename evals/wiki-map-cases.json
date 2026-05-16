@@ -56,5 +56,11 @@
     "topic": "qzqzqzqz-not-a-real-topic-12345",
     "level": "beginner",
     "expectedBehavior": "not_found"
+  },
+  {
+    "topic": "Photosynthsis",
+    "level": "beginner",
+    "expectedBehavior": "not_found",
+    "expectedSuggestionsInclude": ["Photosynthesis"]
   }
 ]
