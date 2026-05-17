@@ -13,7 +13,6 @@ import {
 import {
   buildAllowedUrlSet,
   checkGraphIntegrity,
-  overrideGrounding,
   stripHallucinatedUrls,
 } from "../lib/validation";
 
@@ -195,7 +194,7 @@ async function evalCase(c: EvalCase): Promise<CaseResult> {
 
   const allowed = buildAllowedUrlSet(context);
   const stripped = stripHallucinatedUrls(result.map, allowed);
-  const map = overrideGrounding(stripped.map, context);
+  const map = stripped.map;
 
   checks.push({
     name: "schema validity",

@@ -4,13 +4,21 @@ import { useState } from "react";
 
 import { KnowledgeGraph } from "@/components/KnowledgeGraph";
 import { NodeDetailsPanel } from "@/components/NodeDetailsPanel";
-import type { WikiMap } from "@/lib/schemas";
+import type { Grounding, WikiMap } from "@/lib/schemas";
 import type { MapMeta } from "@/hooks/useWikiMap";
 
 // Reused card shell: white bg, beige border, soft shadow, generous padding.
 const CARD = "rounded-xl border border-border bg-card p-6 shadow-sm";
 
-export function MapResult({ map, meta }: { map: WikiMap; meta: MapMeta }) {
+export function MapResult({
+  map,
+  grounding,
+  meta,
+}: {
+  map: WikiMap;
+  grounding: Grounding;
+  meta: MapMeta;
+}) {
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const selectedNode = selectedNodeId
     ? (map.nodes.find((n) => n.id === selectedNodeId) ?? null)
@@ -163,15 +171,15 @@ export function MapResult({ map, meta }: { map: WikiMap; meta: MapMeta }) {
         </span>{" "}
         Main article:{" "}
         <span className="font-medium text-foreground/70">
-          {map.grounding.mainArticleTitle}
+          {grounding.mainArticleTitle}
         </span>
         . Selected{" "}
         <span className="font-medium text-foreground/70">
-          {map.grounding.selectedConceptCount}
+          {grounding.selectedConceptCount}
         </span>{" "}
         concepts from{" "}
         <span className="font-medium text-foreground/70">
-          {map.grounding.candidateLinkCount}
+          {grounding.candidateLinkCount}
         </span>{" "}
         candidate links.
       </p>

@@ -7,6 +7,7 @@ import {
   NODE_COUNT_MAX,
   NODE_COUNT_MIN,
 } from "../lib/ai/constants";
+import { computeGrounding } from "../lib/validation";
 
 type Level = "beginner" | "intermediate" | "advanced";
 
@@ -80,13 +81,12 @@ async function main() {
     if (s.wikipediaUrl) console.log(`     -> ${s.wikipediaUrl}`);
   }
 
-  console.log(`\n--- grounding ---`);
-  console.log(`  mainArticleTitle:     ${map.grounding.mainArticleTitle}`);
-  console.log(`  candidateLinkCount:   ${map.grounding.candidateLinkCount}`);
-  console.log(`  selectedConceptCount: ${map.grounding.selectedConceptCount}`);
-  console.log(
-    `  selectedTitles:       ${map.grounding.selectedTitles.join(", ")}`,
-  );
+  const grounding = computeGrounding(map, context);
+  console.log(`\n--- grounding (server-computed) ---`);
+  console.log(`  mainArticleTitle:     ${grounding.mainArticleTitle}`);
+  console.log(`  candidateLinkCount:   ${grounding.candidateLinkCount}`);
+  console.log(`  selectedConceptCount: ${grounding.selectedConceptCount}`);
+  console.log(`  selectedTitles:       ${grounding.selectedTitles.join(", ")}`);
 
   console.log("\n" + bar("-"));
   console.log("VALIDATION CHECKS");

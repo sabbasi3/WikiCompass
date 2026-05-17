@@ -53,15 +53,9 @@ export function buildWikiMapPrompt(context: WikiContext): PromptParts {
       - intermediate: domain terms are fine with brief explanations. Assume general background.
       - advanced: assume prior knowledge. Focus on methods, depth, controversies, and edges of the field.
 
-   10. Grounding metadata. Populate the grounding object:
-      - mainArticleTitle: copy the provided title.
-      - candidateLinkCount: copy the integer count of candidate links from the user message.
-      - selectedConceptCount: the number of your generated nodes that have a wikipediaUrl set.
-      - selectedTitles: the titles of those same nodes.
+   10. Sensitive topics. For living-person biographies, controversial events, or contested topics, keep tone neutral, avoid moral judgment, and add a warning if appropriate.
 
-   11. Sensitive topics. For living-person biographies, controversial events, or contested topics, keep tone neutral, avoid moral judgment, and add a warning if appropriate.
-
-   12. Personalization. If a userGoal is provided in the user message, the learningPath ordering and the whyThisPath paragraph MUST reflect that goal explicitly. Prefer nodes and steps relevant to the user's stated purpose. Reference the goal in whyThisPath so the user can see the effect. If no userGoal is provided, ignore this rule.
+   11. Personalization. If a userGoal is provided in the user message, the learningPath ordering and the whyThisPath paragraph MUST reflect that goal explicitly. Prefer nodes and steps relevant to the user's stated purpose. Reference the goal in whyThisPath so the user can see the effect. If no userGoal is provided, ignore this rule.
 
    Return only the structured object. No explanations or commentary before or after it.`;
 

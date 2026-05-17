@@ -29,7 +29,13 @@ export function ResultsByState({
   }
 
   if (state.kind === "map") {
-    return <MapResult map={state.map} meta={state.meta} />;
+    return (
+      <MapResult
+        map={state.map}
+        grounding={state.grounding}
+        meta={state.meta}
+      />
+    );
   }
 
   if (state.kind === "disambiguation") {

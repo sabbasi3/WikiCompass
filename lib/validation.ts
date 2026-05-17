@@ -5,7 +5,7 @@ import {
   NODE_COUNT_MAX,
   NODE_COUNT_MIN,
 } from "./ai/constants";
-import type { WikiMap } from "./schemas";
+import type { Grounding, WikiMap } from "./schemas";
 
 export type StripResult = {
   map: WikiMap;
@@ -107,15 +107,20 @@ export function checkGraphIntegrity(map: WikiMap): GraphIssue[] {
   return issues;
 }
 
-export function overrideGrounding(map: WikiMap, context: WikiContext): WikiMap {
+// Compute the grounding metadata for a generated map. Every field
+// comes from context (server-fetched) or from filtering the model's
+// nodes — never from the model's own self-reported counts. Returned
+// separately so it travels alongside the map in the response shape,
+// not inside it.
+export function computeGrounding(
+  map: WikiMap,
+  context: WikiContext,
+): Grounding {
   const nodesWithUrls = map.nodes.filter((n) => n.wikipediaUrl);
   return {
-    ...map,
-    grounding: {
-      mainArticleTitle: context.title,
-      candidateLinkCount: context.candidateLinks.length,
-      selectedConceptCount: nodesWithUrls.length,
-      selectedTitles: nodesWithUrls.map((n) => n.title),
-    },
+    mainArticleTitle: context.title,
+    candidateLinkCount: context.candidateLinks.length,
+    selectedConceptCount: nodesWithUrls.length,
+    selectedTitles: nodesWithUrls.map((n) => n.title),
   };
 }

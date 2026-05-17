@@ -13,7 +13,7 @@ import { mapRequestSchema } from "@/lib/schemas";
 import {
   buildAllowedUrlSet,
   checkGraphIntegrity,
-  overrideGrounding,
+  computeGrounding,
   stripHallucinatedUrls,
 } from "@/lib/validation";
 
@@ -145,7 +145,11 @@ export async function POST(req: Request) {
     );
   }
 
-  map = overrideGrounding(map, context);
+  // Grounding is server-computed metadata about the generation. It
+  // lives alongside the map in the response, not inside it — the AI
+  // schema only describes AI output, and grounding is provably not
+  // AI output.
+  const grounding = computeGrounding(map, context);
 
   const graphIssues = checkGraphIntegrity(map);
   const internalMeta =
@@ -160,6 +164,7 @@ export async function POST(req: Request) {
     {
       kind: "map",
       map,
+      grounding,
       meta: {
         latencyMs: mapResult.latencyMs,
         usage: mapResult.usage,

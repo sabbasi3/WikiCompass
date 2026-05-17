@@ -115,12 +115,17 @@ export const wikiMapSchema = z.object({
       }),
     )
     .max(40),
-  grounding: z.object({
-    mainArticleTitle: z.string(),
-    candidateLinkCount: z.number(), // how many links we fetched from Wikipedia
-    selectedConceptCount: z.number(), // how many made it into the map
-    selectedTitles: z.array(z.string()),
-  }),
 });
+
+// Server-computed metadata about an AI generation. Not part of the AI
+// schema — these values come from the Wikipedia context we built and
+// from filtering the model's output, never from the model itself.
+// Travels alongside the WikiMap in the route response.
+export type Grounding = {
+  mainArticleTitle: string;
+  candidateLinkCount: number;
+  selectedConceptCount: number;
+  selectedTitles: string[];
+};
 
 export type WikiMap = z.infer<typeof wikiMapSchema>;

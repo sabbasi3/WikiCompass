@@ -2,7 +2,7 @@
 
 import { useCallback, useState } from "react";
 
-import type { WikiMap } from "@/lib/schemas";
+import type { Grounding, WikiMap } from "@/lib/schemas";
 import type { WikiSearchResult } from "@/lib/wiki";
 
 export type Level = "beginner" | "intermediate" | "advanced";
@@ -23,7 +23,7 @@ export type MapMeta = {
 export type WikiMapState =
   | { kind: "idle" }
   | { kind: "loading"; topic: string; level: Level }
-  | { kind: "map"; map: WikiMap; meta: MapMeta }
+  | { kind: "map"; map: WikiMap; grounding: Grounding; meta: MapMeta }
   | { kind: "disambiguation"; title: string; candidates: WikiSearchResult[] }
   | { kind: "not_found"; title: string; suggestions: WikiSearchResult[] }
   | {
