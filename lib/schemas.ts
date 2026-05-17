@@ -59,7 +59,6 @@ export const wikiMapSchema = z.object({
   summary: z.string().max(2000),
   audienceLevel: z.enum(["beginner", "intermediate", "advanced"]),
   keyTakeaway: z.string().max(400),
-  confidence: z.enum(["high", "medium", "low"]),
   warnings: z.array(z.string().min(1).max(300)).max(10), // anything the user should know (e.g., "thin article")
   whyThisPath: z.string().max(1500),
   learningPath: z

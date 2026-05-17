@@ -51,7 +51,6 @@ async function main() {
   console.log(bar());
   console.log(`topic:        ${map.topic}`);
   console.log(`topicType:    ${map.topicType}`);
-  console.log(`confidence:   ${map.confidence}`);
   console.log(`audience:     ${map.audienceLevel}`);
   console.log(
     `warnings:     ${map.warnings.length ? map.warnings.join(" | ") : "(none)"}`,

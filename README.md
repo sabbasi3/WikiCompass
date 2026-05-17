@@ -24,7 +24,7 @@ WikiCompass restructures that reference data into a guided learning experience f
 1. Enter a topic (e.g. `Machine learning`), pick a level (Beginner / Intermediate / Advanced), and optionally add a learning goal ("I'm interviewing at Microsoft next week") to personalize the path
 2. Skeleton loader for ~5 seconds while the AI works
 3. See:
-   - **Summary card** — topic type (concept / person / event / etc.), confidence badge, key takeaway, Wikipedia summary
+   - **Summary card** — topic type (concept / person / event / etc.), key takeaway, Wikipedia summary
    - **Knowledge graph** — 8–18 type-colored nodes with directed relationships, laid out top-to-bottom; click a node for explanation + Wikipedia link
    - **Learning path** — 4–10 ordered steps with one-sentence reasons and a paragraph-level "why this path" rationale that references the learning goal if one was provided
    - **Grounding badge** — "Selected N concepts from M candidate Wikipedia links" (transparency over which inputs the model saw)

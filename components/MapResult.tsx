@@ -7,13 +7,6 @@ import { NodeDetailsPanel } from "@/components/NodeDetailsPanel";
 import type { WikiMap } from "@/lib/schemas";
 import type { MapMeta } from "@/hooks/useWikiMap";
 
-// Confidence-aware pill colors. Type pill uses neutral cream/beige.
-const CONFIDENCE_STYLES: Record<WikiMap["confidence"], string> = {
-  high: "bg-emerald-50 text-emerald-700 border-emerald-200",
-  medium: "bg-amber-50 text-amber-700 border-amber-200",
-  low: "bg-zinc-50 text-zinc-600 border-zinc-200",
-};
-
 // Reused card shell: white bg, beige border, soft shadow, generous padding.
 const CARD = "rounded-xl border border-border bg-card p-6 shadow-sm";
 
@@ -30,11 +23,6 @@ export function MapResult({ map, meta }: { map: WikiMap; meta: MapMeta }) {
         <div className="mb-4 flex flex-wrap items-center gap-2">
           <span className="rounded-md border border-border bg-muted px-2.5 py-1 text-xs font-medium text-muted-foreground">
             {map.topicType}
-          </span>
-          <span
-            className={`rounded-md border px-2.5 py-1 text-xs font-medium ${CONFIDENCE_STYLES[map.confidence]}`}
-          >
-            {map.confidence} confidence
           </span>
           <span className="ml-auto text-sm text-muted-foreground">
             {(meta.latencyMs / 1000).toFixed(1)}s
