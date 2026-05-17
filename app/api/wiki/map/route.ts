@@ -88,15 +88,21 @@ export async function POST(req: Request) {
     );
   }
 
+  // Two retry layers compose:
+  //   1. The AI SDK retries transport failures internally (network,
+  //      rate-limit 429s, provider 5xx). Default maxRetries = 2 means
+  //      generateWikiMap() can attempt up to 3 calls before throwing.
+  //   2. When generateWikiMap() throws here, it's a *content* failure
+  //      that survived the SDK's transport retries — Zod schema rejected
+  //      the model's output, or parsing failed. We give the model one
+  //      more shot in case the next generation is shaped better; if that
+  //      fails too, degrade to ai_failed with the Wikipedia fallback so
+  //      the user can still explore the topic.
   let mapResult;
   let retries = 0;
   try {
     mapResult = await generateWikiMap(context);
   } catch (firstErr) {
-    // Server-side log only - safe to log Zod/AI error messages here
-    // because route handlers run on the server, never visible to the
-    // client DevTools console. Goes to next dev terminal locally and
-    // Vercel function logs in production.
     console.error(
       "[wiki/map] first attempt failed, retrying:",
       firstErr instanceof Error ? firstErr.message : String(firstErr),
@@ -105,7 +111,6 @@ export async function POST(req: Request) {
     try {
       mapResult = await generateWikiMap(context);
     } catch (secondErr) {
-      // Log detail server-side; return a generic message to the client.
       console.error(
         "[wiki/map] retry also failed, returning ai_failed:",
         secondErr instanceof Error ? secondErr.message : String(secondErr),
