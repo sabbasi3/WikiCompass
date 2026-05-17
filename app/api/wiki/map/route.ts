@@ -6,8 +6,12 @@ import {
   fetchAmbiguousCandidates,
   getWikipediaContext,
   suggestWikipediaTitles,
+  type WikiContext,
 } from "@/lib/wiki";
-import { generateWikiMap } from "@/lib/ai/generateWikiMap";
+import {
+  generateWikiMap,
+  type GenerateWikiMapResult,
+} from "@/lib/ai/generateWikiMap";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { mapRequestSchema } from "@/lib/schemas";
 import {
@@ -49,7 +53,7 @@ export async function POST(req: Request) {
   if (!rate.ok) return rate.response;
   const rateHeaders = rate.headers;
 
-  let context;
+  let context: WikiContext;
   try {
     context = await getWikipediaContext(topic, level, userGoal);
   } catch (err) {
@@ -98,7 +102,7 @@ export async function POST(req: Request) {
   //      more shot in case the next generation is shaped better; if that
   //      fails too, degrade to ai_failed with the Wikipedia fallback so
   //      the user can still explore the topic.
-  let mapResult;
+  let mapResult: GenerateWikiMapResult;
   let retries = 0;
   try {
     mapResult = await generateWikiMap(context);

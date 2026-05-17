@@ -104,7 +104,7 @@ Ambiguous topics like `Mercury` show a deterministic chooser (planet / element /
 
 ## Evaluation
 
-Lightweight eval runner that exercises the full server pipeline (Wikipedia fetch → AI call → URL strip → grounding override → graph integrity check) against five test cases.
+Lightweight eval runner that exercises the full server pipeline (Wikipedia fetch → AI call → URL strip → graph integrity check) plus the three user-facing edge cases (disambiguation, not_found, typo recovery) against 11 test cases.
 
 ```bash
 npm run eval
@@ -118,15 +118,24 @@ Per case, the runner emits two kinds of checks:
 2. **Graph integrity** — every edge endpoint exists; exactly one `main_topic`; node count in [8, 18]; learning path length in [4, 10]
 3. **URL grounding** — reports `0 hallucinated URLs (clean)` or `N stripped before render` (the pipeline always handles hallucination; this is a behavioral signal that the pipeline did its job)
 4. **Forbidden absent** — unrelated terms don't appear in any text field (strong signal: the model rarely hallucinates off-topic content)
-5. **Ambiguous regression** — `Mercury` throws `DisambiguationError` instead of returning a confident map
+5. **Topic type** (when `expectedTopicType` is set) — asserts rule 3 (e.g. `Bill Gates → person`, not `concept`) so rule 4 applies the right arc
+6. **Personalization** (when `userGoal` + `expectedGoalEcho` are set) — asserts rule 11: the `whyThisPath` paragraph echoes the goal's keywords
+7. **Ambiguous regression** — `Mercury` / `ML` throw `DisambiguationError` instead of returning a confident map
+8. **Candidate coverage** (for ambiguous cases) — asserts the disambig merge surfaces known-good options (`Mercury (planet)`, `Machine learning` for `ML`)
+9. **Not_found regression** — junk and typo'd topics throw `WikipediaNotFoundError`
+10. **Did-you-mean** (when `expectedSuggestionsInclude` is set) — asserts a typo like `Photosynthsis` returns `Photosynthesis` in its suggestions
 
 **Info signal** (reported quantitatively; never gates):
 
-6. **Coverage** — `N/M expected concepts present (absent: ...)`. Absent concepts usually mean the candidate-link ordering didn't surface the term, not that the model failed. We report it but don't blame the model.
+- **Coverage** — `N/M expected concepts present (absent: ...)`. Absent concepts usually mean the candidate-link ordering didn't surface the term, not that the model failed. We report it but don't blame the model.
 
-Per case, telemetry: wall-clock latency + token usage. Aggregate cost: ~$0.013 to run the full suite on Flash-Lite (5 generations × ~4K tokens). Exits non-zero on any case failure (CI-ready).
+**Post-loop cross-level check:**
 
-Current baseline: **5/5 cases pass, 17/17 gating checks pass**, plus 4 `[INFO]` coverage signals reported quantitatively (e.g. `3/3 expected concepts present`). Coverage is treated as a behavioral signal, not a gating check — when a concept is absent, the failure usually lives upstream of the model (candidate-link ordering), not in the model itself. The system as a whole works; the eval reports it. A known limitation: `prop=links` returns alphabetically within each lead/body fetch, so alphabetically late terms get crowded out of the top 60. A proper fix would interleave lead links with document-order body links. Documented in the [wiki layer](lib/wiki.ts).
+- **Audience adaptation** — when the same topic runs at multiple levels, asserts the `whyThisPath` rationales differ via Jaccard similarity (threshold 0.85). If rule 9 silently breaks, similarity shoots toward 1.0 and the check fires.
+
+Per case, telemetry: wall-clock latency + token usage. Aggregate cost: roughly $0.03 to run the full suite on Flash-Lite (8 content generations + 3 fast edge cases). Exits non-zero on any gating-check failure (CI-ready).
+
+Current baseline: **11/11 cases pass, 43/43 gating checks pass**, plus 7 `[INFO]` signals (coverage on content cases). A known limitation surfaces in the coverage signal: `prop=links` returns alphabetically within each lead/body fetch, so alphabetically late terms (`Supervised learning`, `Treaty of Versailles`) get crowded out of the top 60 candidates. A proper fix would interleave lead-section links with document-order body links by parsing wikitext. Documented in the [wiki layer](lib/wiki/).
 
 ## What are lead links?
 
@@ -229,15 +238,19 @@ docs/
 ## Production hardening shipped
 
 - **Rate limit** — 10 req/min per IP, sliding window via `@upstash/ratelimit` against Vercel-hosted Upstash Redis. Verified live with a 12-request concurrent burst: 10 succeeded, 1 returned 429 at the configured threshold, 1 returned the `kind: "ai_failed"` graceful-degradation response (both AI Gateway primary + fallback were rate-limited downstream, route's 2-attempt retry caught it cleanly).
-- **Native Gateway model fallback** — `providerOptions.gateway.models` configured with `gemini-2.5-flash-lite` primary, `claude-haiku-4-5` fallback. Gateway routes transparently on transport failures.
-- **URL hallucination strip** — every generation's URLs are validated against the candidate set; any drift gets stripped and a user-visible warning is added.
+- **Native Gateway model fallback** — `providerOptions.gateway.models` configured with `gemini-2.5-flash-lite` primary, `claude-haiku-4-5` fallback. Gateway routes transparently on transport failures. App-side retry-once layered on top catches *content* failures (schema rejection) that survive the SDK's transport budget.
+- **URL hallucination strip** — every generation's URLs are validated against the 61-URL allowed set (1 canonical + up to 60 candidate links). Any drift gets stripped to `null` server-side; the strip count + details go to server logs for ops visibility, not to the user.
 - **Graph integrity check** — post-AI validation that all edge endpoints exist, exactly one `main_topic`, node/path counts in range.
+- **Disambiguation merge** — strict search (quality-ranked) + actual disambig page links (curated coverage), deduped. Means typing `ML` surfaces `Machine learning` even though "ML" doesn't string-match the title.
+- **"Did you mean...?" on typos** — `Photosynthsis` (typo) returns 404 + 5 suggestions via Wikipedia's fuzzy opensearch API. One click recovers.
+- **Generic error responses** — internal error messages stay server-side (logs); client gets a generic message so library/version/upstream details don't leak in 5xx bodies.
 
 ## Known limitations and production next steps
 
-- **Lead-section link ordering** — `prop=links` returns alphabetically. A proper fix interleaves lead-section + document-order body links by fetching wikitext. Roughly 2–3 hours of work.
+- **Lead-section link ordering** — `prop=links` returns alphabetically. Coverage info signal in the eval surfaces this regularly (`Supervised learning` falls off the top 60). Real fix interleaves lead-section + document-order body links by parsing wikitext. Roughly 2–3 hours of work.
 - **No streaming** — the AI call uses `generateText` (blocking) with a 5-second skeleton. Upgrading to `streamText` with `Output.object` and progressive node rendering ("watch the graph build itself") would cut perceived latency to ~1 second. Designed for, not yet implemented.
 - **No persisted history** — every map is fresh. A "saved maps" feature with Postgres + a `share_id` is a 1-hour addition.
 - **No analytics** — production would log topics searched, generation latency, validation failure rate, cost per map.
 - **Single-shot prompt** — no chain-of-prompts (e.g., first classify topic type, then generate map for that type). Reasonable for MVP; would help quality on tail topics.
-- **No LLM-as-judge eval** — the eval suite checks schema, graph integrity, URL grounding, and string-coverage. Quality of explanations is not automatically graded; that would add an LLM-judge dimension at ~2× the eval cost.
+- **No LLM-as-judge eval** — the eval mechanically covers 10 distinct checks across structure / behavior / regression, but rules 2 (source-of-truth) and 10 (sensitive topics) remain unverified because they need qualitative judgment. LLM-as-judge would cover them at ~2× eval cost.
+- **Disambiguation chooser cap = 15** — pathologically large disambig pages (50+ entries) may drop tail items. Could become a "show more" disclosure in the chooser UI when needed.
