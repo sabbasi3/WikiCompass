@@ -20,13 +20,19 @@ export function buildAllowedUrlSet(context: WikiContext): Set<string> {
   ]);
 }
 
+
+// Remove any Wikipedia URLs from nodes and learningPath that are not in the allowed set.
+// This prevents "hallucinated" (AI-invented or non-canonical) links from leaking into the UI.
+// Stripped URLs are collected for downstream reporting/debugging.
 export function stripHallucinatedUrls(
   map: WikiMap,
   allowed: Set<string>,
 ): StripResult {
+  // Collect URLs that are not in the allowed set for reporting/debugging.
   const strippedNodeUrls: string[] = [];
   const strippedPathUrls: string[] = [];
 
+  // Remove Wikipedia URLs from nodes if they are not in the allowed set.
   const nodes = map.nodes.map((n) => {
     if (n.wikipediaUrl && !allowed.has(n.wikipediaUrl)) {
       strippedNodeUrls.push(`${n.title}: ${n.wikipediaUrl}`);
@@ -35,6 +41,7 @@ export function stripHallucinatedUrls(
     return n;
   });
 
+  // Do the same for the learning path, which may reference a subset of nodes.
   const learningPath = map.learningPath.map((s) => {
     if (s.wikipediaUrl && !allowed.has(s.wikipediaUrl)) {
       strippedPathUrls.push(`${s.title}: ${s.wikipediaUrl}`);

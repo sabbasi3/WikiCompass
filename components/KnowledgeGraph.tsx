@@ -5,57 +5,23 @@ import {
   Background,
   BackgroundVariant,
   Controls,
-  Handle,
   MarkerType,
-  Position,
   ReactFlow,
   useEdgesState,
   useNodesState,
   type Edge as RFEdge,
   type Node as RFNode,
-  type NodeProps,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 
 import { computeGraphLayout } from "@/lib/graph-layout";
 import type { WikiMap } from "@/lib/schemas";
-import { NODE_STYLES } from "./node-styles";
 
-type GraphNodeData = WikiMap["nodes"][number] & Record<string, unknown>;
-type GraphNodeType = RFNode<GraphNodeData, "concept">;
+import { GraphNode } from "./GraphNode";
 
-function GraphNode({ data, selected }: NodeProps<GraphNodeType>) {
-  const style = NODE_STYLES[data.type] ?? NODE_STYLES.related_topic;
-  const ring = selected
-    ? "ring-2 ring-indigo-500 ring-offset-2 ring-offset-white dark:ring-offset-zinc-950"
-    : "";
-  return (
-    <div
-      className={`rounded-lg border-2 ${style.bg} ${style.border} ${style.text} ${ring} px-3 py-2 shadow-sm transition`}
-      style={{ width: 200 }}
-    >
-      <Handle
-        type="target"
-        position={Position.Top}
-        style={{ opacity: 0, background: "transparent", border: "none" }}
-        isConnectable={false}
-      />
-      <div className="text-[10px] uppercase tracking-wider opacity-70">
-        {data.type.replace(/_/g, " ")}
-      </div>
-      <div className="text-sm font-semibold leading-tight line-clamp-2">
-        {data.title}
-      </div>
-      <Handle
-        type="source"
-        position={Position.Bottom}
-        style={{ opacity: 0, background: "transparent", border: "none" }}
-        isConnectable={false}
-      />
-    </div>
-  );
-}
-
+// React Flow node-type registry. The "concept" string matches the
+// `type` field that computeGraphLayout assigns to every node — React
+// Flow uses it to look up which custom component to render.
 const nodeTypes = { concept: GraphNode };
 
 export function KnowledgeGraph({
