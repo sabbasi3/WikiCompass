@@ -32,6 +32,22 @@ type EvalCase = {
   // (e.g. "Machine learning" for "ML", or "Mercury (element)" for
   // "Mercury") — the cases that motivated the merge in the first place.
   expectedCandidatesInclude?: string[];
+  // Asserts rule 3 (topic-type inference) classifies correctly.
+  // E.g. "Bill Gates" should be "person", not "concept", or rule 4
+  // applies the wrong arc.
+  expectedTopicType?:
+    | "concept"
+    | "person"
+    | "event"
+    | "place"
+    | "organization"
+    | "work"
+    | "other";
+  // Asserts rule 11 (personalization) is firing — when present, this
+  // userGoal is passed through to the prompt, and expectedGoalEcho
+  // asserts the listed keywords appear in whyThisPath.
+  userGoal?: string;
+  expectedGoalEcho?: string[];
 };
 
 // Checks are either "gating" (default) — they contribute to case pass/fail
@@ -170,7 +186,7 @@ async function evalCase(c: EvalCase): Promise<CaseResult> {
 
   let context;
   try {
-    context = await getWikipediaContext(c.topic, c.level);
+    context = await getWikipediaContext(c.topic, c.level, c.userGoal);
   } catch (err) {
     checks.push({
       name: "wikipedia fetch",
@@ -211,6 +227,39 @@ async function evalCase(c: EvalCase): Promise<CaseResult> {
         ? "all edges valid, exactly one main_topic, counts in range"
         : graphIssues.map((i) => i.detail).join("; "),
   });
+
+  // Rule 3 (topic-type inference). When the case declares an expected
+  // topicType, assert the model classified correctly — a misclassified
+  // topic cascades into rule 4 applying the wrong arc (biographies
+  // forced into prerequisite-heavy concept structure).
+  if (c.expectedTopicType) {
+    checks.push({
+      name: "topic type",
+      ok: map.topicType === c.expectedTopicType,
+      detail:
+        map.topicType === c.expectedTopicType
+          ? `inferred "${map.topicType}"`
+          : `expected "${c.expectedTopicType}", got "${map.topicType}"`,
+    });
+  }
+
+  // Rule 11 (personalization). When the case sets a userGoal, the
+  // whyThisPath paragraph should reference that goal explicitly.
+  // Verified by asserting goal-keywords appear in the rationale.
+  if (c.expectedGoalEcho && c.expectedGoalEcho.length > 0) {
+    const haystack = (map.whyThisPath ?? "").toLowerCase();
+    const missing = c.expectedGoalEcho.filter(
+      (w) => !haystack.includes(w.toLowerCase()),
+    );
+    checks.push({
+      name: "personalization",
+      ok: missing.length === 0,
+      detail:
+        missing.length === 0
+          ? `whyThisPath echoes all ${c.expectedGoalEcho.length} goal keyword(s)`
+          : `whyThisPath missing goal keyword(s): ${missing.join(", ")}`,
+    });
+  }
 
   // URL grounding: the strip-then-warn pipeline guarantees no user-visible
   // hallucinated URLs. We report the strip count as an informational signal

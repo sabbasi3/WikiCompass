@@ -2,6 +2,7 @@
   {
     "topic": "Machine learning",
     "level": "beginner",
+    "expectedTopicType": "concept",
     "expectedMustInclude": [
       "Artificial intelligence",
       "Supervised learning",
@@ -12,6 +13,7 @@
   {
     "topic": "Machine learning",
     "level": "intermediate",
+    "expectedTopicType": "concept",
     "expectedMustInclude": [
       "Artificial intelligence",
       "Supervised learning",
@@ -22,6 +24,7 @@
   {
     "topic": "Machine learning",
     "level": "advanced",
+    "expectedTopicType": "concept",
     "expectedMustInclude": [
       "Artificial intelligence",
       "Supervised learning",
@@ -32,20 +35,32 @@
   {
     "topic": "Photosynthesis",
     "level": "beginner",
+    "expectedTopicType": "concept",
     "expectedMustInclude": ["Oxygen", "Carbon dioxide", "Plant"],
     "forbidden": ["Quantum computing", "Stock market"]
   },
   {
     "topic": "World War I",
     "level": "beginner",
+    "expectedTopicType": "event",
     "expectedMustInclude": ["Germany", "France", "Empire"],
     "forbidden": ["Machine learning", "Photosynthesis"]
   },
   {
     "topic": "Bill Gates",
     "level": "beginner",
+    "expectedTopicType": "person",
     "expectedMustInclude": ["Microsoft", "Personal computer"],
     "forbidden": ["Photosynthesis", "Quantum computing"]
+  },
+  {
+    "topic": "Bill Gates",
+    "level": "beginner",
+    "expectedTopicType": "person",
+    "userGoal": "I have a software engineering interview at Microsoft next week and want to focus on his role in founding the company.",
+    "expectedGoalEcho": ["Microsoft", "interview"],
+    "expectedMustInclude": ["Microsoft"],
+    "forbidden": ["Photosynthesis"]
   },
   {
     "topic": "Mercury",
