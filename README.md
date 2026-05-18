@@ -75,6 +75,29 @@ Ambiguous topics like `Mercury` show a deterministic chooser (planet / element /
                                       └────────────────────────────┘
 ```
 
+## From Wikipedia to enterprise knowledge
+
+Wikipedia is a useful demo because it's open, trusted, and well-structured — but the architecture generalizes to any trusted, structured knowledge corpus. The data layer (the Wikipedia API helpers in `lib/wiki/`) is the only thing that's domain-specific; everything else stays the same.
+
+Swap Wikipedia for any of these:
+
+- **Product documentation** — fetch from a docs site, internal wiki, or Notion API
+- **Customer support knowledge base** — Zendesk / Intercom / Salesforce Knowledge articles + tags
+- **Onboarding and enablement content** — HR docs, training transcripts, internal playbooks
+- **Codebase documentation** — README and module-level docs across a monorepo
+
+The rest of the pipeline carries over:
+
+- Bounded context retrieval (cap candidates, dedupe, junk filter)
+- Structured AI generation via the AI SDK with Zod validation
+- Post-AI safety net (URL/source grounding, graph integrity check)
+- Interactive graph + learning path rendering
+- Eval suite asserting structural correctness and behavioral signals
+
+**Where RAG slots in**: in the enterprise version, the data-fetch step becomes a query against a vector store over your private docs (top-K passages → candidate set), instead of Wikipedia's REST API. The model still classifies and structures; the post-AI safety net still validates; the UI still renders. **The pattern is the same; only the source changes.**
+
+Product value transfers cleanly: turn dense reference content into guided learning paths for employees, customers, or new hires — without rewriting the surface.
+
 ## Key technical decisions
 
 | Decision | Why |

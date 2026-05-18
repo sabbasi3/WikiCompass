@@ -164,25 +164,47 @@ export function MapResult({
         </ol>
       </section>
 
-      {/* Grounding footer — plain centered text, not a card */}
-      <p className="text-center text-sm text-muted-foreground">
-        <span className="font-medium text-foreground/70">
-          Grounded in Wikipedia.
-        </span>{" "}
-        Main article:{" "}
-        <span className="font-medium text-foreground/70">
-          {grounding.mainArticleTitle}
-        </span>
-        . Selected{" "}
-        <span className="font-medium text-foreground/70">
-          {grounding.selectedConceptCount}
-        </span>{" "}
-        concepts from{" "}
-        <span className="font-medium text-foreground/70">
-          {grounding.candidateLinkCount}
-        </span>{" "}
-        candidate links.
-      </p>
+      {/* Grounding footer — centered text + expandable selected-titles
+          disclosure. Production-transparency UI: proves the model
+          classified a bounded source set, didn't invent the graph. */}
+      <div className="space-y-2 text-center text-sm text-muted-foreground">
+        <p>
+          <span className="font-medium text-foreground/70">
+            Grounded in Wikipedia.
+          </span>{" "}
+          Main article:{" "}
+          <span className="font-medium text-foreground/70">
+            {grounding.mainArticleTitle}
+          </span>
+          . Selected{" "}
+          <span className="font-medium text-foreground/70">
+            {grounding.selectedConceptCount}
+          </span>{" "}
+          concepts from{" "}
+          <span className="font-medium text-foreground/70">
+            {grounding.candidateLinkCount}
+          </span>{" "}
+          candidate links.
+        </p>
+        {grounding.selectedTitles.length > 0 && (
+          <details className="mx-auto inline-block text-left">
+            <summary className="cursor-pointer text-muted-foreground hover:text-foreground">
+              Show the {grounding.selectedTitles.length} selected concepts
+            </summary>
+            <ul className="mt-2 grid grid-cols-1 gap-x-6 gap-y-1 text-xs sm:grid-cols-2">
+              {grounding.selectedTitles.map((t) => (
+                <li key={t} className="text-foreground/70">
+                  {t}
+                </li>
+              ))}
+            </ul>
+          </details>
+        )}
+        <p className="pt-2 text-xs italic">
+          Generated from Wikipedia metadata and AI classification. Verify
+          important information from linked sources.
+        </p>
+      </div>
     </div>
   );
 }
