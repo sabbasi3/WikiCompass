@@ -9,6 +9,7 @@
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
     "eval": "tsx --env-file=.env.local evals/run-evals.ts",
+    "benchmark": "tsx --env-file=.env.local scripts/benchmark.ts",
     "test-wiki": "tsx scripts/test-wiki.ts",
     "test-ai": "tsx --env-file=.env.local scripts/test-ai.ts"
   },

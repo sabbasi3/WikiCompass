@@ -38,7 +38,7 @@ export async function POST(req: Request) {
     );
   }
 
-  const parsed = mapRequestSchema.safeParse(body);
+  const parsed = mapRequestSchema.safeParse(body); //validate input against schema
   if (!parsed.success) {
     return NextResponse.json(
       {

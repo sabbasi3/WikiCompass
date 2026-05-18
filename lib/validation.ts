@@ -135,17 +135,12 @@ export function checkGraphIntegrity(map: WikiMap): GraphIssue[] {
   return issues;
 }
 
-// Compute the grounding metadata for a generated map. Every field
-// comes from context (server-fetched) or from filtering the model's
-// nodes — never from the model's own self-reported counts. Returned
-// separately so it travels alongside the map in the response shape,
-// not inside it.
+// Build trusted metadata about where map concepts came from.
 export function computeGrounding(
   map: WikiMap,
   context: WikiContext,
 ): Grounding {
-  // Type guard narrows wikipediaUrl from `string | null` to `string`
-  // so the selectedConcepts entries have non-null URLs without a `!`.
+  // Keep only nodes that have a real URL.
   const nodesWithUrls = map.nodes.filter(
     (n): n is typeof n & { wikipediaUrl: string } => Boolean(n.wikipediaUrl),
   );

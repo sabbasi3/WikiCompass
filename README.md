@@ -94,7 +94,7 @@ The rest of the pipeline carries over:
 - Interactive graph + learning path rendering
 - Eval suite asserting structural correctness and behavioral signals
 
-**Where RAG slots in**: in the enterprise version, the data-fetch step becomes a query against a vector store over your private docs (top-K passages → candidate set), instead of Wikipedia's REST API. The model still classifies and structures; the post-AI safety net still validates; the UI still renders. **The pattern is the same; only the source changes.**
+**Where RAG slots in** — and where it doesn't: if the enterprise source is **structured** (Confluence, Notion, an internal wiki, Salesforce Knowledge, any docs portal with a real API exposing canonical pages + outgoing references), the data-fetch step is just another API call — no RAG needed. Swap `lib/wiki.ts` for `lib/confluence.ts` and the rest is unchanged. RAG only enters when the source is **unstructured** (PDFs, support transcripts, recorded meetings, Slack), where you have to synthesize a "page" from retrieved chunks. There RAG plays the role our Wikipedia API plays today: producing the bounded context the model classifies. Different shape of context layer for a different shape of source — same pattern.
 
 Product value transfers cleanly: turn dense reference content into guided learning paths for employees, customers, or new hires — without rewriting the surface.
 
@@ -102,15 +102,35 @@ Product value transfers cleanly: turn dense reference content into guided learni
 
 | Decision | Why |
 |---|---|
-| **Live Wikipedia API, no RAG / vector DB** | The AI task is *structuring and classification* of an already-trusted source, not retrieval over hidden documents. Wikipedia is already a structured corpus. Adding RAG to MVP is over-engineering. The same UI + AI pattern transfers to enterprise knowledge bases — that's where RAG would slot in. |
+| **Live Wikipedia API, no RAG / vector DB** | The AI task is *structuring and classification* of an already-trusted source, not retrieval over hidden documents. Wikipedia is already a structured corpus. RAG would be solving a problem we don't have. The same UI + AI pattern transfers to any structured enterprise source (Confluence, Notion, Salesforce Knowledge) via the same API-call shape — RAG only enters if the source is unstructured (PDFs, transcripts). |
 | **`generateText` + `Output.object` with Zod schema** | Structured output via the AI SDK v6 API: every field is type-checked before the frontend sees it. No `JSON.parse` failures, no "I'm sorry, I can't structure that" responses. Schema is the API contract. |
-| **`gemini-2.5-flash-lite` as default model** | Benchmarked 5 models on the same prompt. Flash-Lite hits 5-second latency and ~$0.0006/map — 17× cheaper than Haiku 4.5 with comparable structured-output quality. See [docs/model-benchmark.md](docs/model-benchmark.md). |
+| **`gemini-2.5-flash-lite` as default model** | Benchmarked 6 models on the same prompt and schema (see table below). Flash-Lite is fastest (8s), cheapest ($0.0013/map, ~$133 / 100K maps), and passes all integrity checks. Frontier alternatives are 2–11× slower and 3–13× more expensive with no measurable quality gain on the eval suite. Full methodology in [docs/model-benchmark.md](docs/model-benchmark.md). |
 | **Native Gateway fallback via `providerOptions.gateway.models`** | One config, no application retry code. Gateway routes the primary → fallback list on transport failures (rate limits, provider outages, timeouts) transparently. Application-level retry handles the *content* failure case (schema validation). |
-| **URL strip post-generation** | The prompt forbids hallucinated URLs, but the model can drift. After every generation, the route strips any `wikipediaUrl` not in the candidate set we fetched and adds a warning. Trust nothing from the model on URLs. |
-| **Lead-section-first link filter** | Heavily-cited articles (WWI, biographies) leak citation-author links into the top-60 candidates. Prepending lead-section links (intro paragraph only) puts core concepts at the top. Surfaced and quantified by the evals. |
+| **Verify-then-strip URL pipeline** | Rule 1 of the prompt forbids URLs outside the 150-candidate set, but the model drifts ~3% of the time. For URLs that slip outside, we hit Wikipedia in parallel and keep only those that (a) resolve to a real, non-disambiguation article AND (b) have a resolved-title match against the model's intended node title (Jaccard ≥ 0.6 after stopword removal + plural stemming). Verified URLs are kept; everything else is stripped to `null` and logged. The user never sees a misleading link. |
+| **Candidate priority: lead-section → See Also → tail** | Lead-section links come first (concepts the article depends on), then Wikipedia's editor-curated See Also section (concepts editors think are related), then the long tail of all other article links. Capped at 150. Empirically measured: dropped the model's "outside the candidate set" rate from ~25% (at 60-cap) to ~3% (at 150-cap with See Also priority). Tried 200; introduced eval variance, rolled back to 150. |
 | **Ambiguity detected deterministically, not by the model** | `Mercury` summary returns `type: "disambiguation"` → server throws `DisambiguationError` → route returns 409 with candidate list → frontend renders chooser. The model never has to pick between Mercury planet vs element. |
 | **Upstash for the rate limiter (not "Official Redis for Vercel")** | Functionally either provider would work — both are HTTPS-Redis designed for serverless. The deciding factor is `@upstash/ratelimit`: a purpose-built rate-limit SDK with sliding-window, fixed-window, and token-bucket algorithms, multi-region support, and analytics. Redis Inc.'s offering has no equivalent SDK, so I'd be rolling my own sliding window over raw INCR/EXPIRE (race conditions on increment-then-expire, TTL boundaries). For a complex Redis workload using JSON / search / vector modules, Redis Inc. would tip the choice the other way. |
 | **In-memory rate-limit rejected** | A single-instance counter breaks the moment Vercel autoscales — each serverless instance has its own memory, so the effective limit multiplies by instance count. Vercel KV (now Upstash via marketplace) keeps the counter in shared external state so the limit holds across the fleet. |
+
+### Model benchmark
+
+Same prompt, schema, and Wikipedia context (Machine learning beginner, 150 candidates) through the AI Gateway. One run per model — directional, not statistical; sampling variance is real (especially on OpenAI reasoning models which run at default reasoning effort). Pricing approximate per public per-M-token rates.
+
+| Model | Latency | Cost / map | Cost / 100K maps | Nodes | Integrity |
+|---|---:|---:|---:|---:|:---:|
+| **`google/gemini-2.5-flash-lite`** (default) | **8.0s** | **$0.0013** | **$133** | 10 | ✓ |
+| `openai/gpt-4.1-mini` | 17.1s | $0.0034 | $343 | 8 | ✓ |
+| `google/gemini-2.5-flash` | 23.7s | $0.013 | $1,255 | 13 | ✓ |
+| `anthropic/claude-haiku-4-5` (fallback) | 30.0s | $0.017 | $1,737 | 16 | ✓ |
+| `openai/gpt-5-mini` | 59.3s | $0.012 | $1,174 | 16 | ✓ |
+| `openai/gpt-5-nano` | 88.2s | $0.0053 | $529 | 9 | ✓ |
+
+Headlines:
+
+- **Flash-Lite wins on latency and cost by a wide margin.** 2.1× faster than the next-fastest model (gpt-4.1-mini), 2.6× cheaper. Versus Haiku 4.5: 3.7× faster, 13× cheaper.
+- **All six models pass integrity checks.** Schema validity, graph integrity, and URL grounding hold across providers — quality didn't separate them. Speed and cost did.
+- **OpenAI reasoning models (gpt-5-nano, gpt-5-mini) run at default reasoning effort in this benchmark.** Setting `providerOptions.openai.reasoningEffort = "minimal"` would speed them up — a production deployment using them would tune that. We don't, because Flash-Lite is faster and cheaper out of the box.
+- **The fallback (Haiku 4.5) is intentionally a *different provider*, not a stronger model.** Cross-provider resilience: a Google outage doesn't take both down.
 
 ## Fallback behavior
 
@@ -127,11 +147,13 @@ Product value transfers cleanly: turn dense reference content into guided learni
 
 ## Evaluation
 
-Lightweight eval runner that exercises the full server pipeline (Wikipedia fetch → AI call → URL strip → graph integrity check) plus the three user-facing edge cases (disambiguation, not_found, typo recovery) against 11 test cases.
+Lightweight eval runner that exercises the full server pipeline (Wikipedia fetch → AI call → URL verify-then-strip → graph integrity check) plus the three user-facing edge cases (disambiguation, not_found, typo recovery) against 11 test cases.
 
 ```bash
 npm run eval
 ```
+
+> **Eval vs benchmark — different questions.** The eval suite holds the **model constant** (whatever `AI_MODEL` is set to) and varies **topics** — "does my code still produce correct output across many topics?" Run on every code change. The [benchmark](docs/model-benchmark.md) (`npm run benchmark`) holds the **topic constant** (Machine learning) and varies **models** — "which model should we use? quantify the tradeoff across providers." Run quarterly or when pricing/latency changes. Don't combine them; the cost and cadence profiles are different.
 
 Per case, the runner emits two kinds of checks:
 
@@ -158,7 +180,7 @@ Per case, the runner emits two kinds of checks:
 
 Per case, telemetry: wall-clock latency + token usage. Aggregate cost: roughly $0.03 to run the full suite on Flash-Lite (8 content generations + 3 fast edge cases). Exits non-zero on any gating-check failure (CI-ready).
 
-Current baseline: **11/11 cases pass, 43/43 gating checks pass**, plus 7 `[INFO]` signals (coverage on content cases). A known limitation surfaces in the coverage signal: `prop=links` returns alphabetically within each lead/body fetch, so alphabetically late terms (`Supervised learning`, `Treaty of Versailles`) get crowded out of the top 60 candidates. A proper fix would interleave lead-section links with document-order body links by parsing wikitext. Documented in the [wiki layer](lib/wiki/).
+Current baseline: **11/11 cases pass, 43/43 gating checks pass**, plus 7 `[INFO]` signals (coverage on content cases). A known limitation surfaces in the coverage signal: `prop=links` returns alphabetically within each lead/body fetch, so alphabetically late terms (`Supervised learning`, `Treaty of Versailles`) can get crowded out of the 150-candidate cap. A proper fix would interleave lead-section links with document-order body links by parsing wikitext. Documented in the [wiki layer](lib/wiki/).
 
 ## What are lead links?
 
@@ -202,7 +224,8 @@ KV_REST_API_TOKEN=...                             # auto-injected when Upstash i
 npm run dev         # Next.js dev server
 npm run build       # production build
 npm run typecheck   # tsc --noEmit
-npm run eval        # full eval suite (5 cases)
+npm run eval        # full eval suite (11 cases)
+npm run benchmark   # 6-model cost / latency benchmark
 npm run test-wiki   # smoke test the Wikipedia layer (no AI call)
 npm run test-ai     # smoke test the AI layer for one topic
 ```
@@ -249,13 +272,14 @@ lib/
     prompt.ts                    system + user message builder
     generateWikiMap.ts           generateText + Output.object call
 evals/
-  wiki-map-cases.json            5 test cases
-  run-evals.ts                   runner: 5 gating checks + 1 info signal
+  wiki-map-cases.json            11 test cases
+  run-evals.ts                   runner: gating + behavioral checks (mirrors route)
 scripts/
   test-wiki.ts                   manual Wikipedia smoke harness
   test-ai.ts                     manual AI smoke harness
+  benchmark.ts                   6-model cost / latency benchmark
 docs/
-  model-benchmark.md             5-model comparison + decision rationale
+  model-benchmark.md             6-model comparison + decision rationale
 ```
 
 ## Production hardening shipped
@@ -270,7 +294,7 @@ docs/
 
 ## Known limitations and production next steps
 
-- **Lead-section link ordering** — `prop=links` returns alphabetically. Coverage info signal in the eval surfaces this regularly (`Supervised learning` falls off the top 60). Real fix interleaves lead-section + document-order body links by parsing wikitext. Roughly 2–3 hours of work.
+- **Lead-section link ordering** — `prop=links` returns alphabetically. Coverage info signal in the eval surfaces this regularly (`Supervised learning` can fall off the 150-candidate cap on some runs). Real fix interleaves lead-section + document-order body links by parsing wikitext. Roughly 2–3 hours of work.
 - **No streaming** — the AI call uses `generateText` (blocking) with a 5-second skeleton. Upgrading to `streamText` with `Output.object` and progressive node rendering ("watch the graph build itself") would cut perceived latency to ~1 second. Designed for, not yet implemented.
 - **No persisted history** — every map is fresh. A "saved maps" feature with Postgres + a `share_id` is a 1-hour addition.
 - **No analytics** — production would log topics searched, generation latency, validation failure rate, cost per map.

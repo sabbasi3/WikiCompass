@@ -34,7 +34,7 @@ export async function generateWikiMap(
     temperature: 0.2,
     output: Output.object({ schema: wikiMapSchema }),
     providerOptions: {
-      gateway: { models: modelChain },
+      gateway: { models: modelChain }, // use AI Gateway's fallback capability
     },
   });
   return {

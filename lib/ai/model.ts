@@ -7,3 +7,6 @@ export const AI_FALLBACK_MODELS = (
   .split(",")
   .map((s) => s.trim())
   .filter(Boolean);
+
+// AI task here isn't generative — it's classification + structuring of an already-bounded input set. Don't need strongest model and reasoning.
+// Chose models that are cheap, fast, structured-output capable
