@@ -176,20 +176,20 @@ export function MapResult({
           <span className="font-medium text-foreground/70">
             {grounding.mainArticleTitle}
           </span>
-          . Selected{" "}
+          . Cited{" "}
           <span className="font-medium text-foreground/70">
             {grounding.selectedConceptCount}
           </span>{" "}
-          concepts from{" "}
+          of{" "}
           <span className="font-medium text-foreground/70">
             {grounding.candidateLinkCount}
           </span>{" "}
-          candidate links.
+          candidate Wikipedia articles.
         </p>
         {grounding.selectedTitles.length > 0 && (
           <details className="mx-auto inline-block text-left">
             <summary className="cursor-pointer text-muted-foreground hover:text-foreground">
-              Show the {grounding.selectedTitles.length} selected concepts
+              Show the {grounding.selectedTitles.length} cited articles
             </summary>
             <ul className="mt-2 grid grid-cols-1 gap-x-6 gap-y-1 text-xs sm:grid-cols-2">
               {grounding.selectedTitles.map((t) => (
@@ -200,6 +200,10 @@ export function MapResult({
             </ul>
           </details>
         )}
+        <p className="text-xs">
+          Concepts in the map without a source link couldn&rsquo;t be matched to
+          one of the candidate articles.
+        </p>
         <p className="pt-2 text-xs italic">
           Generated from Wikipedia metadata and AI classification. Verify
           important information from linked sources.
