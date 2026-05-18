@@ -180,3 +180,81 @@ export async function fetchWikipediaLeadLinks(
     .filter((l) => l.ns === 0 && l.exists !== false)
     .map((l) => ({ title: l.title.replace(/_/g, " ") }));
 }
+
+// Pull links from the article's "See also" section. This section is
+// editor-curated as "related concepts worth knowing" — high signal per
+// link, complements the lead section's "concepts the topic depends on."
+// Soft-fails to [] on any error or when no See Also section exists (many
+// shorter articles don't have one). Two API calls: first to find the
+// section index by name, then to fetch its links.
+export async function fetchWikipediaSeeAlsoLinks(
+  title: string,
+): Promise<{ title: string }[]> {
+  const sectionsParams = new URLSearchParams({
+    action: "parse",
+    format: "json",
+    formatversion: "2",
+    page: title,
+    prop: "sections",
+    redirects: "1",
+  });
+  const sectionsRes = await wikiFetch(
+    `${WIKI_BASE}/w/api.php?${sectionsParams.toString()}`,
+  );
+  if (!sectionsRes.ok) {
+    console.warn(
+      `[wiki] fetchWikipediaSeeAlsoLinks fell back to []: sections fetch ${sectionsRes.status} for "${title}"`,
+    );
+    return [];
+  }
+  const sectionsData = (await sectionsRes.json()) as {
+    error?: { code: string; info?: string };
+    parse?: {
+      sections?: Array<{ line: string; index: string }>;
+    };
+  };
+  if (sectionsData.error) {
+    console.warn(
+      `[wiki] fetchWikipediaSeeAlsoLinks fell back to []: ${sectionsData.error.code} for "${title}"`,
+    );
+    return [];
+  }
+  const sections = sectionsData.parse?.sections ?? [];
+  const seeAlso = sections.find((s) => /^see\s*also$/i.test(s.line ?? ""));
+  if (!seeAlso) return [];
+
+  const linksParams = new URLSearchParams({
+    action: "parse",
+    format: "json",
+    formatversion: "2",
+    page: title,
+    prop: "links",
+    section: seeAlso.index,
+    redirects: "1",
+  });
+  const linksRes = await wikiFetch(
+    `${WIKI_BASE}/w/api.php?${linksParams.toString()}`,
+  );
+  if (!linksRes.ok) {
+    console.warn(
+      `[wiki] fetchWikipediaSeeAlsoLinks fell back to []: links fetch ${linksRes.status} for "${title}"`,
+    );
+    return [];
+  }
+  const linksData = (await linksRes.json()) as {
+    error?: { code: string; info?: string };
+    parse?: {
+      links?: Array<{ ns: number; exists?: boolean; title: string }>;
+    };
+  };
+  if (linksData.error) {
+    console.warn(
+      `[wiki] fetchWikipediaSeeAlsoLinks fell back to []: ${linksData.error.code} for "${title}"`,
+    );
+    return [];
+  }
+  const rawLinks = linksData.parse?.links ?? [];
+  return rawLinks
+    .filter((l) => l.ns === 0 && l.exists !== false)
+    .map((l) => ({ title: l.title.replace(/_/g, " ") }));
+}

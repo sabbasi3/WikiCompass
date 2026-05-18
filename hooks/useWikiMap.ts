@@ -13,6 +13,8 @@ export type MapMeta = {
   usage?: { inputTokens?: number; outputTokens?: number; totalTokens?: number };
   retries: number;
   graphIssues: Array<{ kind: string; detail: string }>;
+  unknownUrls: number;
+  verifiedUrls: number;
   strippedUrls: number;
   internal?: {
     strippedNodeUrls: string[];

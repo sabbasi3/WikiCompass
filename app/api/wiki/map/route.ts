@@ -6,6 +6,7 @@ import {
   fetchAmbiguousCandidates,
   getWikipediaContext,
   suggestWikipediaTitles,
+  verifyWikipediaUrls,
   type WikiContext,
 } from "@/lib/wiki";
 import {
@@ -17,6 +18,7 @@ import { mapRequestSchema } from "@/lib/schemas";
 import {
   buildAllowedUrlSet,
   checkGraphIntegrity,
+  collectUnknownUrls,
   computeGrounding,
   stripHallucinatedUrls,
 } from "@/lib/validation";
@@ -137,6 +139,23 @@ export async function POST(req: Request) {
 
   let map = mapResult.map;
   const allowed = buildAllowedUrlSet(context);
+
+  // The model can write URLs not in our candidateLinks set. Most are real
+  // Wikipedia articles we just didn't include (cap is 60; popular topics
+  // have hundreds of outgoing links). Verify them against Wikipedia in
+  // parallel before stripping — keep the reals, drop the genuinely fake.
+  const unknownUrls = collectUnknownUrls(map, allowed);
+  const verified =
+    unknownUrls.length > 0
+      ? await verifyWikipediaUrls(unknownUrls)
+      : new Set<string>();
+  for (const url of verified) allowed.add(url);
+  if (unknownUrls.length > 0) {
+    console.log(
+      `[wiki/map] URL verification for "${context.title}": ${verified.size}/${unknownUrls.length} model-supplied URLs verified, ${unknownUrls.length - verified.size} will be stripped`,
+    );
+  }
+
   const stripResult = stripHallucinatedUrls(map, allowed);
   map = stripResult.map;
   // Strip silently from the user's perspective — the map still renders
@@ -146,7 +165,7 @@ export async function POST(req: Request) {
     stripResult.strippedNodeUrls.length + stripResult.strippedPathUrls.length;
   if (totalStripped > 0) {
     console.warn(
-      `[wiki/map] stripped ${totalStripped} hallucinated URL(s) for topic "${context.title}":`,
+      `[wiki/map] stripped ${totalStripped} unverified URL(s) for topic "${context.title}":`,
       {
         nodes: stripResult.strippedNodeUrls,
         path: stripResult.strippedPathUrls,
@@ -179,6 +198,8 @@ export async function POST(req: Request) {
         usage: mapResult.usage,
         retries,
         graphIssues,
+        unknownUrls: unknownUrls.length,
+        verifiedUrls: verified.size,
         strippedUrls:
           stripResult.strippedNodeUrls.length +
           stripResult.strippedPathUrls.length,

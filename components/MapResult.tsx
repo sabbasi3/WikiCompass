@@ -38,6 +38,7 @@ export function MapResult({
               ? ` · ${meta.usage.totalTokens.toLocaleString()} tokens`
               : ""}
             {meta.retries > 0 ? ` · ${meta.retries} retry` : ""}
+            {meta.verifiedUrls > 0 ? ` · ${meta.verifiedUrls} verified` : ""}
           </span>
         </div>
         <h2 className="font-serif text-2xl font-semibold tracking-tight text-foreground">

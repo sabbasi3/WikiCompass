@@ -9,10 +9,12 @@ import {
   fetchAmbiguousCandidates,
   getWikipediaContext,
   suggestWikipediaTitles,
+  verifyWikipediaUrls,
 } from "../lib/wiki";
 import {
   buildAllowedUrlSet,
   checkGraphIntegrity,
+  collectUnknownUrls,
   stripHallucinatedUrls,
 } from "../lib/validation";
 
@@ -208,7 +210,18 @@ async function evalCase(c: EvalCase): Promise<CaseResult> {
     return { topic: c.topic, level: c.level, ms: Date.now() - t0, checks };
   }
 
+  // Mirror the route's verification pipeline: collect URLs the model wrote
+  // outside the candidate set, verify them against Wikipedia (title-match
+  // required), and expand allowed with the verified ones before stripping.
+  // Without this, eval results would describe pre-verification behavior
+  // that no real user ever sees.
   const allowed = buildAllowedUrlSet(context);
+  const unknownPairs = collectUnknownUrls(result.map, allowed);
+  const verified =
+    unknownPairs.length > 0
+      ? await verifyWikipediaUrls(unknownPairs)
+      : new Set<string>();
+  for (const url of verified) allowed.add(url);
   const stripped = stripHallucinatedUrls(result.map, allowed);
   const map = stripped.map;
 
@@ -261,20 +274,22 @@ async function evalCase(c: EvalCase): Promise<CaseResult> {
     });
   }
 
-  // URL grounding: the strip-then-warn pipeline guarantees no user-visible
-  // hallucinated URLs. We report the strip count as an informational signal
-  // (model behavior), not as a system-failure assertion. A non-zero strip
-  // count means the model misbehaved AND the pipeline corrected it — the
-  // production system worked as designed.
+  // URL grounding: the verify-then-strip pipeline guarantees no user-visible
+  // misleading URLs. We report a breakdown — how many URLs the model wrote
+  // outside the candidate set, how many we verified against Wikipedia (kept),
+  // and how many we stripped (rejected). Informational signal, not gating:
+  // any non-zero shows the safety net at work, not a system failure.
   const totalStripped =
     stripped.strippedNodeUrls.length + stripped.strippedPathUrls.length;
+  const verifiedCount = verified.size;
+  const unknownCount = unknownPairs.length;
   checks.push({
     name: "URL grounding",
     ok: true,
     detail:
-      totalStripped === 0
-        ? "model produced 0 hallucinated URLs (clean)"
-        : `model produced ${totalStripped} hallucinated URL(s); pipeline stripped them before render`,
+      unknownCount === 0
+        ? "model stayed within candidate set (clean)"
+        : `${unknownCount} URL(s) outside candidates → ${verifiedCount} verified + kept, ${totalStripped} stripped`,
   });
 
   // Coverage is a behavioral signal, not a gating check. When a concept is

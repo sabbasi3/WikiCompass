@@ -12,6 +12,7 @@ export {
   WikipediaNotFoundError,
   fetchWikipediaLeadLinks,
   fetchWikipediaLinksAndCategories,
+  fetchWikipediaSeeAlsoLinks,
   fetchWikipediaSummary,
   titleToUrl,
   type WikiLinksAndCategories,
@@ -27,3 +28,5 @@ export {
 } from "./search";
 
 export { getWikipediaContext, type WikiContext } from "./context";
+
+export { verifyWikipediaUrls } from "./verify";

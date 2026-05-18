@@ -20,6 +20,28 @@ export function buildAllowedUrlSet(context: WikiContext): Set<string> {
   ]);
 }
 
+// Collect every (url, title) pair the model wrote where the URL isn't in
+// the allowed set. Deduped by url+title — the verifier checks the resolved
+// Wikipedia article's title against the intended title, so the title side
+// of the pair matters.
+export function collectUnknownUrls(
+  map: WikiMap,
+  allowed: Set<string>,
+): Array<{ url: string; intendedTitle: string }> {
+  const seen = new Set<string>();
+  const out: Array<{ url: string; intendedTitle: string }> = [];
+  const add = (url: string | null, title: string) => {
+    if (!url || allowed.has(url)) return;
+    const key = `${url}|${title}`;
+    if (seen.has(key)) return;
+    seen.add(key);
+    out.push({ url, intendedTitle: title });
+  };
+  for (const n of map.nodes) add(n.wikipediaUrl, n.title);
+  for (const s of map.learningPath) add(s.wikipediaUrl, s.title);
+  return out;
+}
+
 // Remove any Wikipedia URLs from nodes and learningPath that are not in the allowed set.
 // This prevents "hallucinated" (AI-invented or non-canonical) links from leaking into the UI.
 // Stripped URLs are collected for downstream reporting/debugging.

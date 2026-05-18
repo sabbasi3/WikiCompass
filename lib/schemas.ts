@@ -1,10 +1,7 @@
-// Central schemas. Every Zod contract the app uses lives here:
-//   - Request schemas: shape of inbound HTTP bodies
-//   - AI output schemas: shape the model is constrained to produce
-//
-// Pattern: one file, two sections, derived TypeScript types co-located
-// with the schema they come from. Importers always pull schema + type
-// from the same location.
+// Used Zod to define and enforce the structure of data coming from the AI model, API requests, or external sources.
+// catch malformed model output, prevent json parse failure. shape might be wrong — missing fields, extra fields, a string where you expected a number.
+// AI SDK converts Zod schemas to JSON Schema and passes that to the model provider's structured-output API, 
+// so the model is constrained to produce conformant output, not just validated after the fact.
 
 import { z } from "zod";
 
@@ -36,11 +33,7 @@ export const mapRequestSchema = z.object({
 
 // Length caps are circuit-breakers, not content controls. They protect
 // against runaway model output bloating the client payload or persisted
-// storage. Set generously (3-5x expected length) so well-behaved
-// generations never trip them - the cap only fires on genuinely
-// pathological output. Fields under `grounding.*` are intentionally
-// unbounded because the route overwrites them server-side from context.
-//
+// storage. Set generously (3-5x expected length) 
 // Array bounds for nodes and learningPath come from ./ai/constants and
 // are also referenced by the prompt and the post-hoc graph integrity
 // check, so all three layers move together.
