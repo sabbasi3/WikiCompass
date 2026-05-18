@@ -6,6 +6,7 @@ import {
   BackgroundVariant,
   Controls,
   MarkerType,
+  MiniMap,
   ReactFlow,
   useEdgesState,
   useNodesState,
@@ -45,9 +46,10 @@ export function KnowledgeGraph({
       id: e.id,
       source: e.source,
       target: e.target,
-      label: e.label,
-      labelStyle: { fontSize: 10, fill: "#71717a" },
-      labelBgStyle: { fill: "transparent" },
+      // Stash the relationship text in `data` so we can re-derive the
+      // label conditionally based on which node is selected. Default
+      // edges render without labels for a clean, uncluttered view.
+      data: { relationship: e.label },
       style: { stroke: "#a1a1aa", strokeWidth: 1.5 },
       markerEnd: {
         type: MarkerType.ArrowClosed,
@@ -67,16 +69,60 @@ export function KnowledgeGraph({
     [nodes, selectedNodeId],
   );
 
+  // Edges have no labels by default — keeps the graph readable when there
+  // are many edges converging on a few central nodes. When a node is
+  // selected, only its incident edges get labels (with white-backed pills
+  // so they're always readable even if two short edges share a midpoint).
+  const styledEdges = useMemo(() => {
+    return edges.map((e) => {
+      const isConnected =
+        selectedNodeId &&
+        (e.source === selectedNodeId || e.target === selectedNodeId);
+      if (isConnected) {
+        return {
+          ...e,
+          label: (e.data?.relationship as string | undefined) ?? "",
+          labelStyle: { fontSize: 11, fill: "#52525b", fontWeight: 500 },
+          labelBgStyle: { fill: "white" },
+          labelBgPadding: [4, 4] as [number, number],
+          labelBgBorderRadius: 4,
+          style: { stroke: "#52525b", strokeWidth: 2 },
+          markerEnd: {
+            type: MarkerType.ArrowClosed,
+            color: "#52525b",
+            width: 16,
+            height: 16,
+          },
+        };
+      }
+      // Dim non-connected edges when something is selected — focuses attention.
+      if (selectedNodeId) {
+        return {
+          ...e,
+          label: undefined,
+          style: { stroke: "#d4d4d8", strokeWidth: 1 },
+          markerEnd: {
+            type: MarkerType.ArrowClosed,
+            color: "#d4d4d8",
+            width: 14,
+            height: 14,
+          },
+        };
+      }
+      return { ...e, label: undefined };
+    });
+  }, [edges, selectedNodeId]);
+
   return (
-    <div className="h-[420px] w-full rounded-lg border border-zinc-200 bg-zinc-50 lg:h-[560px] dark:border-zinc-800 dark:bg-zinc-950">
+    <div className="h-[480px] w-full rounded-lg border border-zinc-200 bg-zinc-50 lg:h-[700px] dark:border-zinc-800 dark:bg-zinc-950">
       <ReactFlow
         nodes={styledNodes}
-        edges={edges}
+        edges={styledEdges}
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         nodeTypes={nodeTypes}
         fitView
-        fitViewOptions={{ padding: 0.05 }}
+        fitViewOptions={{ padding: 0.12 }}
         proOptions={{ hideAttribution: true }}
         onNodeClick={(_, node) => onSelectNode(node.id)}
         onPaneClick={() => onSelectNode(null)}
@@ -91,6 +137,14 @@ export function KnowledgeGraph({
           color="#d4d4d8"
         />
         <Controls showInteractive={false} />
+        <MiniMap
+          pannable
+          zoomable
+          maskColor="rgba(0, 0, 0, 0.05)"
+          nodeColor="#a1a1aa"
+          nodeStrokeColor="#71717a"
+          nodeBorderRadius={4}
+        />
       </ReactFlow>
     </div>
   );

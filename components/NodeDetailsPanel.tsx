@@ -11,16 +11,10 @@ export function NodeDetailsPanel({
   node: Node | null;
   onClose: () => void;
 }) {
-  if (!node) {
-    return (
-      <div className="flex h-full flex-col items-center justify-center rounded-xl border border-dashed border-border bg-background/60 p-6 text-center text-sm text-muted-foreground">
-        Click a node in the graph to see its explanation and source link.
-      </div>
-    );
-  }
+  if (!node) return null;
 
   return (
-    <div className="rounded-xl border border-border bg-card p-5 shadow-sm">
+    <div className="rounded-xl border border-border bg-card p-5 shadow-xl ring-1 ring-black/5">
       <div className="mb-3 flex items-start justify-between gap-2">
         <span className="rounded-md border border-border bg-muted px-2.5 py-1 text-xs font-medium text-muted-foreground">
           {node.type.replace(/_/g, " ")}

@@ -79,20 +79,25 @@ export function MapResult({
             Drag to pan · scroll to zoom · click a node for details
           </span>
         </div>
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-          <div className="lg:col-span-2">
-            <KnowledgeGraph
-              map={map}
-              selectedNodeId={selectedNodeId}
-              onSelectNode={setSelectedNodeId}
-            />
-          </div>
-          <div className="lg:col-span-1">
-            <NodeDetailsPanel
-              node={selectedNode}
-              onClose={() => setSelectedNodeId(null)}
-            />
-          </div>
+        {/* Graph takes the full card width. The details panel floats over
+            it as an absolutely-positioned overlay — only rendered when a
+            node is selected. Clicking the graph pane (or the X) closes it. */}
+        <div className="relative">
+          <KnowledgeGraph
+            map={map}
+            selectedNodeId={selectedNodeId}
+            onSelectNode={setSelectedNodeId}
+          />
+          {selectedNode && (
+            <div className="pointer-events-none absolute right-4 top-4 z-10 w-[340px] max-w-[calc(100%-2rem)]">
+              <div className="pointer-events-auto">
+                <NodeDetailsPanel
+                  node={selectedNode}
+                  onClose={() => setSelectedNodeId(null)}
+                />
+              </div>
+            </div>
+          )}
         </div>
       </section>
 

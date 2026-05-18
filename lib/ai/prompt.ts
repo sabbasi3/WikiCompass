@@ -57,6 +57,21 @@ export function buildWikiMapPrompt(context: WikiContext): PromptParts {
 
    11. Personalization. If a userGoal is provided in the user message, the learningPath ordering and the whyThisPath paragraph MUST reflect that goal explicitly. Prefer nodes and steps relevant to the user's stated purpose. Reference the goal in whyThisPath so the user can see the effect. If no userGoal is provided, ignore this rule.
 
+   12. Edge direction. Read each edge as the sentence "source [relationship] target" — it MUST make sense in that direction. Never reverse the natural reading.
+       Examples that read correctly:
+         - data --[requires]--> machine_learning   ("Data is required by Machine learning")
+         - machine_learning --[applied_in]--> computer_vision   ("Machine learning is applied in Computer vision")
+         - machine_learning --[leads_to]--> deep_learning   ("Machine learning leads to Deep learning")
+         - linear_algebra --[part_of]--> machine_learning   ("Linear algebra is part of Machine learning")
+       Backwards examples to AVOID:
+         - machine_learning --[applied_in]--> data   (backwards: data is not an application of ML; if data is a prerequisite, write data --[requires]--> machine_learning)
+         - machine_learning --[requires]--> data   (backwards: ML is not required by data)
+       Rule of thumb by node type:
+         - prerequisite nodes are SOURCES of edges INTO main_topic (with "requires" or similar)
+         - application nodes are TARGETS of edges FROM main_topic (with "applied_in")
+         - advanced_topic nodes are TARGETS of edges FROM main_topic (with "leads_to")
+         - core_concept / related_topic can go either way — pick the direction that reads naturally
+
    Return only the structured object. No explanations or commentary before or after it.`;
 
   const linkLines = context.candidateLinks
