@@ -1,6 +1,6 @@
 import { Ratelimit } from "@upstash/ratelimit";
 import { Redis } from "@upstash/redis";
-import { NextResponse } from "next/server";
+import { NextResponse } from "next/server"; //  Next.js helper for building HTTP responses with status codes and headers
 
 const url = process.env.KV_REST_API_URL;
 const token = process.env.KV_REST_API_TOKEN;
