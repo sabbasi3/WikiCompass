@@ -125,7 +125,10 @@ export type Grounding = {
   mainArticleTitle: string;
   candidateLinkCount: number;
   selectedConceptCount: number;
-  selectedTitles: string[];
+  // Citations the map made — each entry is a node that had a verified
+  // Wikipedia URL after the strip pass. UI renders these as clickable
+  // links so the user can verify any cited source.
+  selectedConcepts: { title: string; url: string }[];
 };
 
 export type WikiMap = z.infer<typeof wikiMapSchema>;

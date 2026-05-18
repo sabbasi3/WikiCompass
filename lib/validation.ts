@@ -20,7 +20,6 @@ export function buildAllowedUrlSet(context: WikiContext): Set<string> {
   ]);
 }
 
-
 // Remove any Wikipedia URLs from nodes and learningPath that are not in the allowed set.
 // This prevents "hallucinated" (AI-invented or non-canonical) links from leaking into the UI.
 // Stripped URLs are collected for downstream reporting/debugging.
@@ -123,11 +122,18 @@ export function computeGrounding(
   map: WikiMap,
   context: WikiContext,
 ): Grounding {
-  const nodesWithUrls = map.nodes.filter((n) => n.wikipediaUrl);
+  // Type guard narrows wikipediaUrl from `string | null` to `string`
+  // so the selectedConcepts entries have non-null URLs without a `!`.
+  const nodesWithUrls = map.nodes.filter(
+    (n): n is typeof n & { wikipediaUrl: string } => Boolean(n.wikipediaUrl),
+  );
   return {
     mainArticleTitle: context.title,
     candidateLinkCount: context.candidateLinks.length,
     selectedConceptCount: nodesWithUrls.length,
-    selectedTitles: nodesWithUrls.map((n) => n.title),
+    selectedConcepts: nodesWithUrls.map((n) => ({
+      title: n.title,
+      url: n.wikipediaUrl,
+    })),
   };
 }

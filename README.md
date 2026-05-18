@@ -27,7 +27,7 @@ WikiCompass restructures that reference data into a guided learning experience f
    - **Summary card** — topic type (concept / person / event / etc.), key takeaway, Wikipedia summary
    - **Knowledge graph** — 8–18 type-colored nodes with directed relationships, laid out top-to-bottom; click a node for explanation + Wikipedia link
    - **Learning path** — 4–10 ordered steps with one-sentence reasons and a paragraph-level "why this path" rationale that references the learning goal if one was provided
-   - **Grounding badge** — "Selected N concepts from M candidate Wikipedia links" (transparency over which inputs the model saw)
+   - **Grounding badge** — "Cited N of M candidate Wikipedia articles" with an expandable list of clickable cited titles (transparency over which inputs the model used)
 
 Ambiguous topics like `Mercury` show a deterministic chooser (planet / element / mythology / Records / Project / Prize / etc.) **before** the AI is called — the model never has to guess which Mercury you meant.
 
@@ -57,7 +57,7 @@ Ambiguous topics like `Mercury` show a deterministic chooser (planet / element /
    │   │                                                          │  │
    │   └─ post-AI pipeline:                                       │  │
    │       ├─ stripHallucinatedUrls                               │  │
-   │       ├─ overrideGrounding                                   │  │
+   │       ├─ computeGrounding                                   │  │
    │       └─ checkGraphIntegrity                                 │  │
    └────────────────┬─────────────────────────────────┬───────────┘  │
                     │                                 │              │

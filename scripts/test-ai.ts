@@ -86,7 +86,9 @@ async function main() {
   console.log(`  mainArticleTitle:     ${grounding.mainArticleTitle}`);
   console.log(`  candidateLinkCount:   ${grounding.candidateLinkCount}`);
   console.log(`  selectedConceptCount: ${grounding.selectedConceptCount}`);
-  console.log(`  selectedTitles:       ${grounding.selectedTitles.join(", ")}`);
+  console.log(
+    `  selectedConcepts:     ${grounding.selectedConcepts.map((c) => c.title).join(", ")}`,
+  );
 
   console.log("\n" + bar("-"));
   console.log("VALIDATION CHECKS");

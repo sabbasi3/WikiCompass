@@ -186,15 +186,22 @@ export function MapResult({
           </span>{" "}
           candidate Wikipedia articles.
         </p>
-        {grounding.selectedTitles.length > 0 && (
+        {grounding.selectedConcepts.length > 0 && (
           <details className="mx-auto inline-block text-left">
             <summary className="cursor-pointer text-muted-foreground hover:text-foreground">
-              Show the {grounding.selectedTitles.length} cited articles
+              Show the {grounding.selectedConcepts.length} cited articles
             </summary>
             <ul className="mt-2 grid grid-cols-1 gap-x-6 gap-y-1 text-xs sm:grid-cols-2">
-              {grounding.selectedTitles.map((t) => (
-                <li key={t} className="text-foreground/70">
-                  {t}
+              {grounding.selectedConcepts.map((c) => (
+                <li key={c.title}>
+                  <a
+                    href={c.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-foreground/70 transition-colors hover:text-emerald-700 hover:underline"
+                  >
+                    {c.title}
+                  </a>
                 </li>
               ))}
             </ul>
