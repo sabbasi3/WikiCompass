@@ -63,6 +63,27 @@
     "forbidden": ["Photosynthesis"]
   },
   {
+    "topic": "Tokyo",
+    "level": "beginner",
+    "expectedTopicType": "place",
+    "expectedMustInclude": ["Japan"],
+    "forbidden": ["Machine learning", "Photosynthesis"]
+  },
+  {
+    "topic": "NASA",
+    "level": "beginner",
+    "expectedTopicType": "organization",
+    "expectedMustInclude": ["United States"],
+    "forbidden": ["Photosynthesis", "Cooking"]
+  },
+  {
+    "topic": "Hamlet",
+    "level": "beginner",
+    "expectedTopicType": "work",
+    "expectedMustInclude": ["Shakespeare"],
+    "forbidden": ["Quantum computing", "Photosynthesis"]
+  },
+  {
     "topic": "Mercury",
     "level": "beginner",
     "expectedBehavior": "ambiguous",
