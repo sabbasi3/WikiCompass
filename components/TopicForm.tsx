@@ -24,23 +24,39 @@ const EXAMPLES = [
 
 const GOAL_MAX = 500;
 
+export type FormMode = "oneshot" | "journey";
+
 export function TopicForm({
   topic,
   level,
   userGoal,
+  mode,
+  email,
   onTopicChange,
   onLevelChange,
   onUserGoalChange,
+  onModeChange,
+  onEmailChange,
   onSubmit,
   disabled,
 }: {
   topic: string;
   level: Level;
   userGoal: string;
+  mode: FormMode;
+  email: string;
   onTopicChange: (v: string) => void;
   onLevelChange: (v: Level) => void;
   onUserGoalChange: (v: string) => void;
-  onSubmit: (topic: string, level: Level, userGoal: string) => void;
+  onModeChange: (v: FormMode) => void;
+  onEmailChange: (v: string) => void;
+  onSubmit: (
+    topic: string,
+    level: Level,
+    userGoal: string,
+    mode: FormMode,
+    email: string,
+  ) => void;
   disabled: boolean;
 }) {
   const [showGoal, setShowGoal] = useState(false);
@@ -49,7 +65,7 @@ export function TopicForm({
     e.preventDefault();
     const trimmed = topic.trim();
     if (!trimmed) return;
-    onSubmit(trimmed, level, userGoal.trim());
+    onSubmit(trimmed, level, userGoal.trim(), mode, email.trim());
   }
 
   return (
@@ -116,9 +132,67 @@ export function TopicForm({
                 d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"
               />
             </svg>
-            {disabled ? "Generating…" : "Generate map"}
+            {disabled
+              ? mode === "journey"
+                ? "Starting…"
+                : "Generating…"
+              : mode === "journey"
+                ? "Start journey"
+                : "Generate map"}
           </Button>
         </div>
+
+        {/* Mode toggle — one-shot map vs guided journey */}
+        <div className="mt-4 flex flex-wrap items-center gap-2 text-sm">
+          <span className="text-muted-foreground">Mode:</span>
+          <button
+            type="button"
+            onClick={() => onModeChange("oneshot")}
+            disabled={disabled}
+            className={`rounded-full border px-3 py-1.5 transition-colors disabled:opacity-50 ${
+              mode === "oneshot"
+                ? "border-emerald-500 bg-emerald-50 text-emerald-700"
+                : "border-border bg-background text-foreground/70 hover:border-emerald-500 hover:text-emerald-700"
+            }`}
+          >
+            One-shot map
+          </button>
+          <button
+            type="button"
+            onClick={() => onModeChange("journey")}
+            disabled={disabled}
+            className={`rounded-full border px-3 py-1.5 transition-colors disabled:opacity-50 ${
+              mode === "journey"
+                ? "border-emerald-500 bg-emerald-50 text-emerald-700"
+                : "border-border bg-background text-foreground/70 hover:border-emerald-500 hover:text-emerald-700"
+            }`}
+          >
+            Guided journey
+          </button>
+        </div>
+
+        {/* Email field only relevant in journey mode */}
+        {mode === "journey" && (
+          <div className="mt-3 space-y-1 text-sm">
+            <label
+              htmlFor="journey-email"
+              className="block text-muted-foreground"
+            >
+              Email (optional). We&apos;ll send quizzes on days 1, 3, and 7.
+              Leave blank to bookmark this page instead.
+            </label>
+            <Input
+              id="journey-email"
+              type="email"
+              placeholder="you@example.com"
+              value={email}
+              onChange={(e) => onEmailChange(e.target.value)}
+              disabled={disabled}
+              className="h-10"
+              aria-label="Email for quiz delivery"
+            />
+          </div>
+        )}
 
         {/* Suggested topics — pill-style with emerald hover */}
         <div className="mt-4 flex flex-wrap items-center gap-2 text-sm">
