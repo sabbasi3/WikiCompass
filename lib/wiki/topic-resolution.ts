@@ -1,6 +1,9 @@
-// Search, suggestion, and disambiguation candidate fetching. Higher-
-// level than api.ts — these functions compose API calls + filtering
-// to return ranked/curated candidate lists for the UI.
+// Topic-resolution helpers: turn the user's raw input into a usable topic
+// even when it doesn't cleanly match a Wikipedia article. Fires on the
+// unhappy paths — ambiguous topics (Mercury → chooser), typos (Photosynthsis
+// → did-you-mean). Higher-level than api.ts: each public function composes
+// multiple API calls + filtering to return ranked/curated candidate lists
+// the UI renders directly.
 
 import { filterAndDedupeLinks } from "../link-filter";
 

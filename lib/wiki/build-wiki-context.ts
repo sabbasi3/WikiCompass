@@ -1,6 +1,10 @@
-// The request-time orchestrator. Combines parallel API calls into the
-// WikiContext bundle that the AI prompt and post-AI validation both
-// consume. The boundary between "Wikipedia data" and "AI input."
+// Builds the WikiContext bundle that the AI prompt consumes — fetches
+// summary, links, and See Also in parallel, applies business rules
+// (disambig detection, merge priority, candidate cap), and returns one
+// typed object. The boundary between "raw Wikipedia data" and "AI input."
+//
+// "Context" here is the AI-domain term: everything you give the model
+// alongside the prompt. WikiContext = context derived from Wikipedia.
 
 import { filterAndDedupeLinks } from "../link-filter";
 

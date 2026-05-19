@@ -1,11 +1,12 @@
-// Barrel re-export so existing consumers (route, hook, validation,
-// prompt, generator, eval, scripts) keep importing from "@/lib/wiki"
-// without per-file path changes.
+// Barrel re-export so consumers (route, hook, validation, prompt,
+// generator, eval, scripts) keep importing from "@/lib/wiki" without
+// per-file path changes.
 //
-// Three internal modules:
-//   ./api     — low-level Wikipedia API helpers, error classes, types
-//   ./search  — search/suggest/disambig candidate fetching
-//   ./context — getWikipediaContext orchestrator + WikiContext type
+// Four internal modules:
+//   ./api                — low-level Wikipedia API helpers, error classes, types
+//   ./build-wiki-context — orchestrates the AI-input bundle (WikiContext)
+//   ./topic-resolution   — handle unresolved topics (ambiguity, typos) for the UI
+//   ./verify             — post-AI URL verification (title-match check)
 
 export {
   DisambiguationError,
@@ -25,8 +26,8 @@ export {
   fetchDisambiguationCandidates,
   searchWikipedia,
   suggestWikipediaTitles,
-} from "./search";
+} from "./topic-resolution";
 
-export { getWikipediaContext, type WikiContext } from "./context";
+export { getWikipediaContext, type WikiContext } from "./build-wiki-context";
 
 export { verifyWikipediaUrls } from "./verify";
