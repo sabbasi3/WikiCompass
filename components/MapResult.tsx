@@ -1,14 +1,19 @@
+// Page-section composer for a successfully-generated map. Each child
+// renders one block of the result UI; this file just lays them out and
+// owns the cross-cutting state (which node is selected in the graph).
+
 "use client";
 
 import { useState } from "react";
 
+import { GroundingPanel } from "@/components/GroundingPanel";
 import { KnowledgeGraph } from "@/components/KnowledgeGraph";
+import { LearningPath } from "@/components/LearningPath";
 import { NodeDetailsPanel } from "@/components/NodeDetailsPanel";
+import { TopicOverview } from "@/components/TopicOverview";
+import { WarningsPanel } from "@/components/WarningsPanel";
 import type { Grounding, WikiMap } from "@/lib/schemas";
 import type { MapMeta } from "@/hooks/useWikiMap";
-
-// Reused card shell: white bg, beige border, soft shadow, generous padding.
-const CARD = "rounded-xl border border-border bg-card p-6 shadow-sm";
 
 export function MapResult({
   map,
@@ -19,6 +24,9 @@ export function MapResult({
   grounding: Grounding;
   meta: MapMeta;
 }) {
+  // selectedNodeId lives here (not inside KnowledgeGraph) because the
+  // floating NodeDetailsPanel is a sibling, not a child, of the graph —
+  // both need to read the same selection.
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const selectedNode = selectedNodeId
     ? (map.nodes.find((n) => n.id === selectedNodeId) ?? null)
@@ -26,48 +34,13 @@ export function MapResult({
 
   return (
     <div className="space-y-6">
-      {/* Topic overview */}
-      <section className={CARD}>
-        <div className="mb-4 flex flex-wrap items-center gap-2">
-          <span className="rounded-md border border-border bg-muted px-2.5 py-1 text-xs font-medium text-muted-foreground">
-            {map.topicType}
-          </span>
-          <span className="ml-auto text-sm text-muted-foreground">
-            {(meta.latencyMs / 1000).toFixed(1)}s
-            {meta.usage?.totalTokens
-              ? ` · ${meta.usage.totalTokens.toLocaleString()} tokens`
-              : ""}
-            {meta.retries > 0 ? ` · ${meta.retries} retry` : ""}
-            {meta.verifiedUrls > 0 ? ` · ${meta.verifiedUrls} verified` : ""}
-          </span>
-        </div>
-        <h2 className="font-serif text-2xl font-semibold tracking-tight text-foreground">
-          {map.topic}
-        </h2>
-        <p className="mt-4 leading-relaxed text-foreground/80">
-          {map.keyTakeaway}
-        </p>
-        <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
-          {map.summary}
-        </p>
-      </section>
+      <TopicOverview map={map} meta={meta} />
+      <WarningsPanel warnings={map.warnings} />
 
-      {/* Warnings (only renders when present) */}
-      {map.warnings.length > 0 && (
-        <section className="rounded-xl border border-amber-200 bg-amber-50 p-4 shadow-sm">
-          <h3 className="font-serif text-base font-semibold text-amber-900">
-            Warnings
-          </h3>
-          <ul className="mt-2 list-inside list-disc text-sm text-amber-800">
-            {map.warnings.map((w, i) => (
-              <li key={i}>{w}</li>
-            ))}
-          </ul>
-        </section>
-      )}
-
-      {/* Knowledge graph + side panel */}
-      <section className={CARD}>
+      {/* Knowledge graph + floating side panel.
+          Kept inline (not extracted to its own component) because it owns
+          the selectedNodeId state and the absolute-positioned overlay. */}
+      <section className="rounded-xl border border-border bg-card p-6 shadow-sm">
         <div className="mb-4 flex items-center justify-between gap-2">
           <h3 className="font-serif text-lg font-semibold tracking-tight text-foreground">
             Knowledge graph
@@ -79,9 +52,6 @@ export function MapResult({
             Drag to pan · scroll to zoom · click a node for details
           </span>
         </div>
-        {/* Graph takes the full card width. The details panel floats over
-            it as an absolutely-positioned overlay — only rendered when a
-            node is selected. Clicking the graph pane (or the X) closes it. */}
         <div className="relative">
           <KnowledgeGraph
             map={map}
@@ -101,127 +71,8 @@ export function MapResult({
         </div>
       </section>
 
-      {/* Learning path */}
-      <section className={CARD}>
-        <div className="mb-4 flex items-center gap-3">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-100">
-            <svg
-              aria-hidden="true"
-              className="h-5 w-5 text-emerald-600"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              strokeWidth={2}
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"
-              />
-            </svg>
-          </div>
-          <div>
-            <h3 className="font-serif text-lg font-semibold tracking-tight text-foreground">
-              Learning path
-            </h3>
-            <p className="text-sm text-muted-foreground">
-              {map.learningPath.length} steps
-            </p>
-          </div>
-        </div>
-
-        <p className="mb-6 border-l-2 border-emerald-200 pl-4 italic leading-relaxed text-muted-foreground">
-          {map.whyThisPath}
-        </p>
-
-        <ol className="space-y-0">
-          {map.learningPath.map((s, i) => (
-            <li key={s.order} className="group flex gap-4">
-              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-emerald-100 font-serif text-sm font-semibold text-emerald-700 transition-colors group-hover:bg-emerald-600 group-hover:text-white">
-                {s.order}
-              </div>
-              <div
-                className={`flex-1 pb-4 ${
-                  i === map.learningPath.length - 1
-                    ? ""
-                    : "border-b border-border/60"
-                } ${i === 0 ? "" : "pt-4"}`}
-              >
-                <div className="font-serif font-semibold text-foreground transition-colors group-hover:text-emerald-700">
-                  {s.wikipediaUrl ? (
-                    <a
-                      href={s.wikipediaUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="hover:underline"
-                    >
-                      {s.title}
-                    </a>
-                  ) : (
-                    s.title
-                  )}
-                </div>
-                <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
-                  {s.reason}
-                </p>
-              </div>
-            </li>
-          ))}
-        </ol>
-      </section>
-
-      {/* Grounding footer — centered text + expandable selected-titles
-          disclosure. Production-transparency UI: proves the model
-          classified a bounded source set, didn't invent the graph. */}
-      <div className="space-y-2 text-center text-sm text-muted-foreground">
-        <p>
-          <span className="font-medium text-foreground/70">
-            Grounded in Wikipedia.
-          </span>{" "}
-          Main article:{" "}
-          <span className="font-medium text-foreground/70">
-            {grounding.mainArticleTitle}
-          </span>
-          . Cited{" "}
-          <span className="font-medium text-foreground/70">
-            {grounding.selectedConceptCount}
-          </span>{" "}
-          of{" "}
-          <span className="font-medium text-foreground/70">
-            {grounding.candidateLinkCount}
-          </span>{" "}
-          candidate Wikipedia articles.
-        </p>
-        {grounding.selectedConcepts.length > 0 && (
-          <details className="mx-auto inline-block text-left">
-            <summary className="cursor-pointer text-muted-foreground hover:text-foreground">
-              Show the {grounding.selectedConcepts.length} cited articles
-            </summary>
-            <ul className="mt-2 grid grid-cols-1 gap-x-6 gap-y-1 text-xs sm:grid-cols-2">
-              {grounding.selectedConcepts.map((c) => (
-                <li key={c.title}>
-                  <a
-                    href={c.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-foreground/70 transition-colors hover:text-emerald-700 hover:underline"
-                  >
-                    {c.title}
-                  </a>
-                </li>
-              ))}
-            </ul>
-          </details>
-        )}
-        <p className="text-xs">
-          Concepts in the map without a source link couldn&rsquo;t be matched to
-          one of the candidate articles.
-        </p>
-        <p className="pt-2 text-xs italic">
-          Generated from Wikipedia metadata and AI classification. Verify
-          important information from linked sources.
-        </p>
-      </div>
+      <LearningPath path={map.learningPath} whyThisPath={map.whyThisPath} />
+      <GroundingPanel grounding={grounding} />
     </div>
   );
 }

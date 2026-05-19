@@ -144,12 +144,13 @@ export function checkGraphIntegrity(map: WikiMap): GraphIssue[] {
   return issues;
 }
 
-// Build trusted metadata about where map concepts came from.
+// Server-computed grounding for the UI transparency panel. Counts only
+// nodes with non-null URLs — i.e. those that survived verify-then-strip.
+// Not derived from anything the model self-reported.
 export function computeGrounding(
   map: WikiMap,
   context: WikiContext,
 ): Grounding {
-  // Keep only nodes that have a real URL.
   const nodesWithUrls = map.nodes.filter(
     (n): n is typeof n & { wikipediaUrl: string } => Boolean(n.wikipediaUrl),
   );

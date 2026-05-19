@@ -174,7 +174,7 @@ export async function POST(req: Request) {
     );
   }
 
-  // Grounding lives alongside the map, not inside it — provably not AI output.
+  // Build the grounding metadata for the response.
   const grounding = computeGrounding(map, context);
 
   // graphIssues is non-blocking (see checkGraphIntegrity).
