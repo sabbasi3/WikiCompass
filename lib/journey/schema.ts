@@ -53,6 +53,14 @@ export const journeys = pgTable(
     // quiz round as the source of truth so quiz questions can be grounded
     // against the same node/path set the user originally saw.
     mapJson: jsonb("map_json").notNull(),
+    // Grounding (selected concepts + citation count) and meta (latency,
+    // usage, graph integrity, URL strip counts) from the day-0 generation.
+    // Stored so the status page can render the full MapResult — same UI
+    // the one-shot lookup gets — instead of a stripped-down variant.
+    // Nullable for backward compatibility with rows created before this
+    // column existed; new rows are always populated by /start.
+    groundingJson: jsonb("grounding_json"),
+    metaJson: jsonb("meta_json"),
     status: text("status").notNull().default("active").$type<JourneyStatus>(),
     // 0 = welcome sent, no quizzes yet. 1/2/3 = that quiz round delivered.
     currentRound: integer("current_round").notNull().default(0),

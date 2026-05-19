@@ -126,12 +126,17 @@ export async function POST(req: Request) {
   }
 
   // ── Persist the journey row ────────────────────────────────────────
+  // Includes grounding + meta from the day-0 generation — the journey
+  // status page renders the full MapResult component using these, same
+  // UI the one-shot lookup gets.
   const journey = await createJourney({
     email: normalizedEmail,
     topic,
     level,
     userGoal: userGoal ?? null,
     mapJson: mapResult.map,
+    groundingJson: mapResult.grounding,
+    metaJson: mapResult.meta,
     // status defaults to 'active', currentRound to 0 via schema defaults
   });
 

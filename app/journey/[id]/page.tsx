@@ -1,17 +1,15 @@
 // Status page for a learning journey. Server component — fetches the
 // journey + its quizzes from Postgres and renders everything in one
-// shot. The interactive bits (skip-ahead button, future hooks) live
-// inside JourneyTimeline as a client component.
+// shot. Interactive bits (skip-ahead button, knowledge graph, node
+// details panel) live inside the imported client components.
 //
 // Render layout:
 //   Header     — topic, level, status, started date
 //   Timeline   — 3 quiz rounds with delivery state + skip-ahead control
-//   Summary    — the day-0 map's summary + key takeaway
-//   Path       — the original learning path from the day-0 map
-//
-// The interactive knowledge graph isn't shown here — the journey page
-// is retention-focused, not exploration. Users who want the graph go
-// back to the home page.
+//   MapResult  — the canonical map UI (TopicOverview / WarningsPanel /
+//                KnowledgeGraph / LearningPath / GroundingPanel). Same
+//                component the one-shot lookup uses, so journey users
+//                get a strict superset: the full map PLUS the quizzes.
 //
 // force-dynamic: this page reflects rapidly-changing workflow state
 // (currentRound bumps every time a quiz lands). A normal reload must
@@ -23,7 +21,13 @@ import { notFound } from "next/navigation";
 
 import { JourneyTimeline } from "@/components/JourneyTimeline";
 import { LearningPath } from "@/components/LearningPath";
-import { getJourneyWithQuizzes, getMapFromJourney } from "@/lib/journey/db";
+import { MapResult } from "@/components/MapResult";
+import {
+  getGroundingFromJourney,
+  getJourneyWithQuizzes,
+  getMapFromJourney,
+  getMetaFromJourney,
+} from "@/lib/journey/db";
 import { signJourneyToken } from "@/lib/journey/tokens";
 import type { JourneyRow } from "@/lib/journey/schema";
 
@@ -38,14 +42,23 @@ export default async function JourneyPage({
 
   const { journey, quizzes } = data;
   const map = getMapFromJourney(journey);
+  const grounding = getGroundingFromJourney(journey);
+  const meta = getMetaFromJourney(journey);
   const token = signJourneyToken(journey.id);
 
   return (
     <main className="mx-auto max-w-4xl space-y-6 p-6">
       <JourneyHeader journey={journey} />
       <JourneyTimeline journey={journey} quizzes={quizzes} token={token} />
-      <Summary map={map} />
-      <LearningPath path={map.learningPath} whyThisPath={map.whyThisPath} />
+      {grounding && meta ? (
+        // Full map UI — the canonical view, shared with the one-shot
+        // lookup flow. Includes graph + grounding panel + warnings.
+        <MapResult map={map} grounding={grounding} meta={meta} />
+      ) : (
+        // Legacy fallback for rows created before grounding/meta were
+        // persisted. Renders the same map data in a stripped-down form.
+        <LegacyMapFallback map={map} />
+      )}
       <BookmarkHint journey={journey} />
     </main>
   );
@@ -87,19 +100,28 @@ function StatusBadge({ status }: { status: string }) {
   );
 }
 
-function Summary({ map }: { map: ReturnType<typeof getMapFromJourney> }) {
+// Renders for journey rows that predate the grounding/meta columns.
+// New journeys always have both fields populated and render MapResult.
+function LegacyMapFallback({
+  map,
+}: {
+  map: ReturnType<typeof getMapFromJourney>;
+}) {
   return (
-    <section className="rounded-xl border border-border bg-card p-6 shadow-sm">
-      <h2 className="font-serif text-lg font-semibold tracking-tight text-foreground">
-        Summary
-      </h2>
-      <p className="mt-3 leading-relaxed text-foreground/90">{map.summary}</p>
-      {map.keyTakeaway && (
-        <p className="mt-4 border-l-2 border-emerald-200 pl-4 italic leading-relaxed text-muted-foreground">
-          {map.keyTakeaway}
-        </p>
-      )}
-    </section>
+    <>
+      <section className="rounded-xl border border-border bg-card p-6 shadow-sm">
+        <h2 className="font-serif text-lg font-semibold tracking-tight text-foreground">
+          Summary
+        </h2>
+        <p className="mt-3 leading-relaxed text-foreground/90">{map.summary}</p>
+        {map.keyTakeaway && (
+          <p className="mt-4 border-l-2 border-emerald-200 pl-4 italic leading-relaxed text-muted-foreground">
+            {map.keyTakeaway}
+          </p>
+        )}
+      </section>
+      <LearningPath path={map.learningPath} whyThisPath={map.whyThisPath} />
+    </>
   );
 }
 

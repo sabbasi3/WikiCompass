@@ -11,7 +11,8 @@
 import { and, eq, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/neon-http";
 import { neon } from "@neondatabase/serverless";
-import type { WikiMap } from "../schemas";
+import type { Grounding, WikiMap } from "../schemas";
+import type { MapMeta } from "../generate-map-response";
 import {
   journeys,
   quizzes,
@@ -153,9 +154,19 @@ export async function getJourneyWithQuizzes(
   return { journey, quizzes: rows };
 }
 
-// ── Typed accessor for the stored map ────────────────────────────────
-// The map is stored as jsonb (unknown to Drizzle). We assert the type
-// at the boundary — the WikiMap shape is validated by Zod when written.
+// ── Typed accessors for the stored map / grounding / meta ────────────
+// Stored as jsonb (unknown to Drizzle). The shapes were validated when
+// written by /api/journey/start, so casting at the boundary is safe.
+// Grounding and meta are nullable for backward compatibility with rows
+// inserted before those columns existed.
 export function getMapFromJourney(journey: JourneyRow): WikiMap {
   return journey.mapJson as WikiMap;
+}
+
+export function getGroundingFromJourney(journey: JourneyRow): Grounding | null {
+  return (journey.groundingJson as Grounding | null) ?? null;
+}
+
+export function getMetaFromJourney(journey: JourneyRow): MapMeta | null {
+  return (journey.metaJson as MapMeta | null) ?? null;
 }

@@ -15,6 +15,13 @@
       "when": 1779216210362,
       "tag": "0001_chilly_gambit",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1779224460262,
+      "tag": "0002_legal_tombstone",
+      "breakpoints": true
     }
   ]
 }
