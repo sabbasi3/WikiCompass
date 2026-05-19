@@ -29,7 +29,8 @@ import {
   storeQuizAndAdvance,
   updateJourneyStatus,
 } from "@/lib/journey/db";
-import { generateQuiz, verifyQuiz } from "@/lib/quiz";
+import { sendJourneyEmail } from "@/lib/email";
+import { generateQuiz, verifyQuiz, type Quiz } from "@/lib/quiz";
 
 // ── Configuration ────────────────────────────────────────────────────
 
@@ -60,24 +61,31 @@ export const cancelHook = defineHook<{ reason?: string }>();
 async function sendWelcomeEmail(journeyId: string): Promise<void> {
   "use step";
   const journey = await getJourney(journeyId);
-  if (journey?.email) {
-    console.log(
-      `[journey:${journeyId}] would send welcome email to ${journey.email}`,
-    );
-  } else {
+  if (!journey) throw new Error(`Journey ${journeyId} not found`);
+  if (!journey.email) {
     console.log(
       `[journey:${journeyId}] no email on file — welcome notification skipped`,
     );
+    return;
   }
+  await sendJourneyEmail(journeyId, journey.email, {
+    kind: "welcome",
+    topic: journey.topic,
+    level: journey.level,
+  });
+  console.log(`[journey:${journeyId}] welcome email sent to ${journey.email}`);
 }
 
 // The core step: generate one round's quiz, verify it grounds against
 // the stored map, persist, advance the round counter. Throws if all
 // questions fail verification — step retry will try a fresh generation.
+// Returns the verified Quiz so the next step (sendQuizEmail) gets the
+// payload without re-fetching — step return values are stored in the
+// workflow event log and survive replays.
 async function generateAndStoreQuiz(
   journeyId: string,
   round: 1 | 2 | 3,
-): Promise<void> {
+): Promise<Quiz> {
   "use step";
   const journey = await getJourney(journeyId);
   if (!journey) throw new Error(`Journey ${journeyId} not found`);
@@ -108,29 +116,51 @@ async function generateAndStoreQuiz(
   console.log(
     `[journey:${journeyId}] round ${round} stored: ${verified.quiz.questions.length} questions, ${verified.strippedCount} stripped`,
   );
+  return verified.quiz;
 }
 
 async function sendQuizEmail(
   journeyId: string,
   round: 1 | 2 | 3,
+  quiz: Quiz,
 ): Promise<void> {
   "use step";
   const journey = await getJourney(journeyId);
-  if (journey?.email) {
+  if (!journey) throw new Error(`Journey ${journeyId} not found`);
+  if (!journey.email) {
     console.log(
-      `[journey:${journeyId}] would send round ${round} quiz email to ${journey.email}`,
+      `[journey:${journeyId}] no email on file — round ${round} email skipped`,
     );
+    return;
   }
+  await sendJourneyEmail(journeyId, journey.email, {
+    kind: "quiz",
+    topic: journey.topic,
+    round,
+    quiz,
+  });
+  console.log(
+    `[journey:${journeyId}] round ${round} email sent to ${journey.email}`,
+  );
 }
 
 async function sendCompletionEmail(journeyId: string): Promise<void> {
   "use step";
   const journey = await getJourney(journeyId);
-  if (journey?.email) {
+  if (!journey) throw new Error(`Journey ${journeyId} not found`);
+  if (!journey.email) {
     console.log(
-      `[journey:${journeyId}] would send completion email to ${journey.email}`,
+      `[journey:${journeyId}] no email on file — completion email skipped`,
     );
+    return;
   }
+  await sendJourneyEmail(journeyId, journey.email, {
+    kind: "completion",
+    topic: journey.topic,
+  });
+  console.log(
+    `[journey:${journeyId}] completion email sent to ${journey.email}`,
+  );
 }
 
 async function markStatus(
@@ -192,8 +222,8 @@ export async function quizJourneyWorkflow(input: {
     }
 
     try {
-      await generateAndStoreQuiz(journeyId, round);
-      await sendQuizEmail(journeyId, round);
+      const quiz = await generateAndStoreQuiz(journeyId, round);
+      await sendQuizEmail(journeyId, round, quiz);
     } catch (err) {
       // Step retries already exhausted by the runtime. Better to mark
       // stuck and stop than to push bad data through subsequent rounds.
