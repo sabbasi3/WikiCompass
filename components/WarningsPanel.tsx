@@ -10,8 +10,8 @@ export function WarningsPanel({ warnings }: { warnings: string[] }) {
         Warnings
       </h3>
       <ul className="mt-2 list-inside list-disc text-sm text-amber-800">
-        {warnings.map((w, i) => (
-          <li key={i}>{w}</li>
+        {warnings.map((warning, i) => (
+          <li key={i}>{warning}</li>
         ))}
       </ul>
     </section>

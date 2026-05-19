@@ -36,22 +36,23 @@ function normalizeTitle(title: string): Set<string> {
     title
       .toLowerCase()
       .split(/[\s\-_/(),.]+/)
-      .map((w) => w.replace(/[^a-z0-9]/g, ""))
-      .filter((w) => w.length > 0 && !STOPWORDS.has(w))
-      .map((w) => {
-        if (w.endsWith("ies") && w.length > 4) return w.slice(0, -3) + "y";
-        if (w.endsWith("es") && w.length > 3) return w.slice(0, -2);
-        if (w.endsWith("s") && w.length > 2) return w.slice(0, -1);
-        return w;
+      .map((word) => word.replace(/[^a-z0-9]/g, ""))
+      .filter((word) => word.length > 0 && !STOPWORDS.has(word))
+      .map((word) => {
+        if (word.endsWith("ies") && word.length > 4)
+          return word.slice(0, -3) + "y";
+        if (word.endsWith("es") && word.length > 3) return word.slice(0, -2);
+        if (word.endsWith("s") && word.length > 2) return word.slice(0, -1);
+        return word;
       }),
   );
 }
 
-function jaccard(a: Set<string>, b: Set<string>): number {
-  if (a.size === 0 || b.size === 0) return 0;
+function jaccard(intended: Set<string>, resolved: Set<string>): number {
+  if (intended.size === 0 || resolved.size === 0) return 0;
   let intersection = 0;
-  for (const w of a) if (b.has(w)) intersection++;
-  const union = a.size + b.size - intersection;
+  for (const word of intended) if (resolved.has(word)) intersection++;
+  const union = intended.size + resolved.size - intersection;
   return intersection / union;
 }
 

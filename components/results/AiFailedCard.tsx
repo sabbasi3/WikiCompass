@@ -51,15 +51,15 @@ export function AiFailedCard({
               {fallback.candidateLinks.length} related articles
             </summary>
             <ul className="mt-2 grid grid-cols-1 gap-1 text-sm sm:grid-cols-2">
-              {fallback.candidateLinks.slice(0, 30).map((l) => (
-                <li key={l.url}>
+              {fallback.candidateLinks.slice(0, 30).map((link) => (
+                <li key={link.url}>
                   <a
-                    href={l.url}
+                    href={link.url}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="text-emerald-700 hover:underline"
                   >
-                    {l.title}
+                    {link.title}
                   </a>
                 </li>
               ))}

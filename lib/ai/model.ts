@@ -14,5 +14,5 @@ export const AI_FALLBACK_MODELS = (
   process.env.AI_FALLBACK_MODELS ?? "anthropic/claude-haiku-4-5"
 )
   .split(",")
-  .map((s) => s.trim())
+  .map((modelId) => modelId.trim())
   .filter(Boolean);

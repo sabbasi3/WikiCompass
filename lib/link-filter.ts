@@ -50,18 +50,18 @@ export function filterAndDedupeLinks(
   max = 60,
 ): { title: string; url: string }[] {
   const seen = new Set<string>();
-  const out: { title: string; url: string }[] = [];
+  const filtered: { title: string; url: string }[] = [];
   for (const link of links) {
-    const t = link.title.trim();
-    if (!t) continue;
-    const norm = t.toLowerCase();
-    if (seen.has(norm)) continue;
-    if (GENERIC_TITLE_BLOCKLIST.has(t)) continue;
-    if (ADMIN_TITLE_PATTERNS.some((re) => re.test(t))) continue;
-    if (isYearTitle(t)) continue;
-    seen.add(norm);
-    out.push({ title: t, url: titleToUrl(t) });
-    if (out.length >= max) break;
+    const title = link.title.trim();
+    if (!title) continue;
+    const dedupeKey = title.toLowerCase();
+    if (seen.has(dedupeKey)) continue;
+    if (GENERIC_TITLE_BLOCKLIST.has(title)) continue;
+    if (ADMIN_TITLE_PATTERNS.some((pattern) => pattern.test(title))) continue;
+    if (isYearTitle(title)) continue;
+    seen.add(dedupeKey);
+    filtered.push({ title, url: titleToUrl(title) });
+    if (filtered.length >= max) break;
   }
-  return out;
+  return filtered;
 }

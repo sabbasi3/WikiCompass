@@ -30,19 +30,19 @@ export function DisambiguationCard({
         Pick the page you meant. The map will use that specific article.
       </p>
       <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2">
-        {candidates.map((c) => (
+        {candidates.map((candidate) => (
           <button
-            key={c.title}
+            key={candidate.title}
             type="button"
-            onClick={() => onPickCandidate(c.title)}
+            onClick={() => onPickCandidate(candidate.title)}
             className="rounded-lg border border-border bg-background p-3 text-left transition-colors hover:border-emerald-500 hover:bg-emerald-50/40"
           >
             <div className="font-serif font-medium text-foreground">
-              {c.title}
+              {candidate.title}
             </div>
-            {c.description && (
+            {candidate.description && (
               <div className="mt-1 text-sm text-muted-foreground">
-                {c.description}
+                {candidate.description}
               </div>
             )}
           </button>

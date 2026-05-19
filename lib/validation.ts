@@ -16,7 +16,7 @@ export type StripResult = {
 export function buildAllowedUrlSet(context: WikiContext): Set<string> {
   return new Set<string>([
     context.canonicalUrl,
-    ...context.candidateLinks.map((l) => l.url),
+    ...context.candidateLinks.map((link) => link.url),
   ]);
 }
 
@@ -29,17 +29,17 @@ export function collectUnknownUrls(
   allowed: Set<string>,
 ): Array<{ url: string; intendedTitle: string }> {
   const seen = new Set<string>();
-  const out: Array<{ url: string; intendedTitle: string }> = [];
+  const unknownUrls: Array<{ url: string; intendedTitle: string }> = [];
   const add = (url: string | null, title: string) => {
     if (!url || allowed.has(url)) return;
     const key = `${url}|${title}`;
     if (seen.has(key)) return;
     seen.add(key);
-    out.push({ url, intendedTitle: title });
+    unknownUrls.push({ url, intendedTitle: title });
   };
-  for (const n of map.nodes) add(n.wikipediaUrl, n.title);
-  for (const s of map.learningPath) add(s.wikipediaUrl, s.title);
-  return out;
+  for (const node of map.nodes) add(node.wikipediaUrl, node.title);
+  for (const step of map.learningPath) add(step.wikipediaUrl, step.title);
+  return unknownUrls;
 }
 
 // Final URL filter — runs AFTER verify has added Wikipedia-confirmed URLs
@@ -52,23 +52,23 @@ export function stripHallucinatedUrls(
   const strippedNodeUrls: string[] = [];
   const strippedPathUrls: string[] = [];
 
-  const nodes = map.nodes.map((n) => {
-    if (n.wikipediaUrl && !allowed.has(n.wikipediaUrl)) {
-      strippedNodeUrls.push(`${n.title}: ${n.wikipediaUrl}`);
-      return { ...n, wikipediaUrl: null };
+  const nodes = map.nodes.map((node) => {
+    if (node.wikipediaUrl && !allowed.has(node.wikipediaUrl)) {
+      strippedNodeUrls.push(`${node.title}: ${node.wikipediaUrl}`);
+      return { ...node, wikipediaUrl: null };
     }
-    return n;
+    return node;
   });
 
   // Same pass for the learning path — its steps reference URLs independently
   // from the nodes array (the model can supply a URL on a path step without
   // a matching node).
-  const learningPath = map.learningPath.map((s) => {
-    if (s.wikipediaUrl && !allowed.has(s.wikipediaUrl)) {
-      strippedPathUrls.push(`${s.title}: ${s.wikipediaUrl}`);
-      return { ...s, wikipediaUrl: null };
+  const learningPath = map.learningPath.map((step) => {
+    if (step.wikipediaUrl && !allowed.has(step.wikipediaUrl)) {
+      strippedPathUrls.push(`${step.title}: ${step.wikipediaUrl}`);
+      return { ...step, wikipediaUrl: null };
     }
-    return s;
+    return step;
   });
 
   return {
@@ -99,24 +99,26 @@ export type GraphIssue = {
 // the user for a model glitch that the eval suite already tracks.
 export function checkGraphIntegrity(map: WikiMap): GraphIssue[] {
   const issues: GraphIssue[] = [];
-  const nodeIds = new Set(map.nodes.map((n) => n.id));
+  const nodeIds = new Set(map.nodes.map((node) => node.id));
 
-  for (const e of map.edges) {
-    if (!nodeIds.has(e.source)) {
+  for (const edge of map.edges) {
+    if (!nodeIds.has(edge.source)) {
       issues.push({
         kind: "missing_edge_source",
-        detail: `edge source "${e.source}" not in nodes`,
+        detail: `edge source "${edge.source}" not in nodes`,
       });
     }
-    if (!nodeIds.has(e.target)) {
+    if (!nodeIds.has(edge.target)) {
       issues.push({
         kind: "missing_edge_target",
-        detail: `edge target "${e.target}" not in nodes`,
+        detail: `edge target "${edge.target}" not in nodes`,
       });
     }
   }
 
-  const mainCount = map.nodes.filter((n) => n.type === "main_topic").length;
+  const mainCount = map.nodes.filter(
+    (node) => node.type === "main_topic",
+  ).length;
   if (mainCount !== 1) {
     issues.push({
       kind: "wrong_main_topic_count",
@@ -152,15 +154,16 @@ export function computeGrounding(
   context: WikiContext,
 ): Grounding {
   const nodesWithUrls = map.nodes.filter(
-    (n): n is typeof n & { wikipediaUrl: string } => Boolean(n.wikipediaUrl),
+    (node): node is typeof node & { wikipediaUrl: string } =>
+      Boolean(node.wikipediaUrl),
   );
   return {
     mainArticleTitle: context.title,
     candidateLinkCount: context.candidateLinks.length,
     selectedConceptCount: nodesWithUrls.length,
-    selectedConcepts: nodesWithUrls.map((n) => ({
-      title: n.title,
-      url: n.wikipediaUrl,
+    selectedConcepts: nodesWithUrls.map((node) => ({
+      title: node.title,
+      url: node.wikipediaUrl,
     })),
   };
 }

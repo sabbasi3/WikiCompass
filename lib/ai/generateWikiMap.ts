@@ -29,16 +29,16 @@ export async function generateWikiMap(
   modelOverride?: string,
 ): Promise<GenerateWikiMapResult> {
   const { system, prompt } = buildWikiMapPrompt(context);
-  const modelId = modelOverride ?? AI_MODEL;
-  // Ensure the primary model is first in the chain even when it equals
-  // a fallback (dedupe). Gateway tries them in order.
-  const modelChain = [
-    modelId,
-    ...AI_FALLBACK_MODELS.filter((m) => m !== modelId),
+  const primaryModelId = modelOverride ?? AI_MODEL;
+  // Ensure the primary model is first in the fallback order even when it
+  // equals a fallback (dedupe). Gateway tries them in order.
+  const modelsToTry = [
+    primaryModelId,
+    ...AI_FALLBACK_MODELS.filter((fallbackId) => fallbackId !== primaryModelId),
   ];
-  const t0 = Date.now();
+  const startMs = Date.now();
   const result = await generateText({
-    model: gateway(modelId),
+    model: gateway(primaryModelId),
     system,
     prompt,
     // Low temperature: this is classification, not creative writing.
@@ -46,12 +46,12 @@ export async function generateWikiMap(
     temperature: 0.2,
     output: Output.object({ schema: wikiMapSchema }),
     providerOptions: {
-      gateway: { models: modelChain },
+      gateway: { models: modelsToTry },
     },
   });
   return {
     map: result.output,
     usage: result.usage,
-    latencyMs: Date.now() - t0,
+    latencyMs: Date.now() - startMs,
   };
 }

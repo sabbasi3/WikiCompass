@@ -11,8 +11,8 @@ import { computeGrounding } from "../lib/validation";
 
 type Level = "beginner" | "intermediate" | "advanced";
 
-function bar(c = "=", n = 72) {
-  return c.repeat(n);
+function bar(char = "=", count = 72) {
+  return char.repeat(count);
 }
 
 async function main() {
@@ -27,10 +27,10 @@ async function main() {
   console.log();
 
   console.log("[1] Fetching Wikipedia context...");
-  const t0 = Date.now();
+  const startMs = Date.now();
   const context = await getWikipediaContext(topic, level);
   console.log(
-    `    ${Date.now() - t0}ms — ${context.candidateLinks.length} candidate links, ${context.categories.length} categories, ${context.summary.length} summary chars`,
+    `    ${Date.now() - startMs}ms — ${context.candidateLinks.length} candidate links, ${context.categories.length} categories, ${context.summary.length} summary chars`,
   );
 
   console.log("\n[2] Calling generateWikiMap (this is the expensive call)...");
@@ -61,24 +61,24 @@ async function main() {
   console.log(`\nwhyThisPath:\n${map.whyThisPath}`);
 
   console.log(`\n--- nodes (${map.nodes.length}) ---`);
-  for (const n of map.nodes) {
-    const url = n.wikipediaUrl ? `\n     -> ${n.wikipediaUrl}` : "";
-    console.log(`  [${n.type}] ${n.id} = "${n.title}"${url}`);
+  for (const node of map.nodes) {
+    const url = node.wikipediaUrl ? `\n     -> ${node.wikipediaUrl}` : "";
+    console.log(`  [${node.type}] ${node.id} = "${node.title}"${url}`);
     console.log(
-      `     ${n.explanation.slice(0, 160)}${n.explanation.length > 160 ? "..." : ""}`,
+      `     ${node.explanation.slice(0, 160)}${node.explanation.length > 160 ? "..." : ""}`,
     );
   }
 
   console.log(`\n--- edges (${map.edges.length}) ---`);
-  for (const e of map.edges) {
-    console.log(`  ${e.source} --[${e.relationship}]--> ${e.target}`);
+  for (const edge of map.edges) {
+    console.log(`  ${edge.source} --[${edge.relationship}]--> ${edge.target}`);
   }
 
   console.log(`\n--- learning path (${map.learningPath.length}) ---`);
-  for (const s of map.learningPath) {
-    console.log(`  ${s.order}. ${s.title}`);
-    console.log(`     reason: ${s.reason}`);
-    if (s.wikipediaUrl) console.log(`     -> ${s.wikipediaUrl}`);
+  for (const step of map.learningPath) {
+    console.log(`  ${step.order}. ${step.title}`);
+    console.log(`     reason: ${step.reason}`);
+    if (step.wikipediaUrl) console.log(`     -> ${step.wikipediaUrl}`);
   }
 
   const grounding = computeGrounding(map, context);
@@ -87,7 +87,7 @@ async function main() {
   console.log(`  candidateLinkCount:   ${grounding.candidateLinkCount}`);
   console.log(`  selectedConceptCount: ${grounding.selectedConceptCount}`);
   console.log(
-    `  selectedConcepts:     ${grounding.selectedConcepts.map((c) => c.title).join(", ")}`,
+    `  selectedConcepts:     ${grounding.selectedConcepts.map((concept) => concept.title).join(", ")}`,
   );
 
   console.log("\n" + bar("-"));
@@ -96,17 +96,17 @@ async function main() {
 
   const allowedUrls = new Set<string>([
     context.canonicalUrl,
-    ...context.candidateLinks.map((l) => l.url),
+    ...context.candidateLinks.map((link) => link.url),
   ]);
   const urlViolations: string[] = [];
-  for (const n of map.nodes) {
-    if (n.wikipediaUrl && !allowedUrls.has(n.wikipediaUrl)) {
-      urlViolations.push(`node "${n.title}" -> ${n.wikipediaUrl}`);
+  for (const node of map.nodes) {
+    if (node.wikipediaUrl && !allowedUrls.has(node.wikipediaUrl)) {
+      urlViolations.push(`node "${node.title}" -> ${node.wikipediaUrl}`);
     }
   }
-  for (const s of map.learningPath) {
-    if (s.wikipediaUrl && !allowedUrls.has(s.wikipediaUrl)) {
-      urlViolations.push(`path step "${s.title}" -> ${s.wikipediaUrl}`);
+  for (const step of map.learningPath) {
+    if (step.wikipediaUrl && !allowedUrls.has(step.wikipediaUrl)) {
+      urlViolations.push(`path step "${step.title}" -> ${step.wikipediaUrl}`);
     }
   }
   console.log(
@@ -114,22 +114,24 @@ async function main() {
       ? "[OK] URL integrity — no hallucinated URLs"
       : `[FAIL] URL integrity — ${urlViolations.length} violations:`,
   );
-  urlViolations.forEach((v) => console.log(`     ${v}`));
+  urlViolations.forEach((violation) => console.log(`     ${violation}`));
 
-  const nodeIds = new Set(map.nodes.map((n) => n.id));
+  const nodeIds = new Set(map.nodes.map((node) => node.id));
   const edgeViolations = map.edges.filter(
-    (e) => !nodeIds.has(e.source) || !nodeIds.has(e.target),
+    (edge) => !nodeIds.has(edge.source) || !nodeIds.has(edge.target),
   );
   console.log(
     edgeViolations.length === 0
       ? "[OK] Graph integrity — all edges reference existing nodes"
       : `[FAIL] Graph integrity — ${edgeViolations.length} edge violations`,
   );
-  edgeViolations.forEach((e) =>
-    console.log(`     ${e.source} -> ${e.target} (missing)`),
+  edgeViolations.forEach((edge) =>
+    console.log(`     ${edge.source} -> ${edge.target} (missing)`),
   );
 
-  const mainCount = map.nodes.filter((n) => n.type === "main_topic").length;
+  const mainCount = map.nodes.filter(
+    (node) => node.type === "main_topic",
+  ).length;
   console.log(
     mainCount === 1
       ? "[OK] Exactly one main_topic node"

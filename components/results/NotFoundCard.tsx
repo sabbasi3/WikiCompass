@@ -34,19 +34,19 @@ export function NotFoundCard({
       </p>
       {hasSuggestions && (
         <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2">
-          {suggestions.map((s) => (
+          {suggestions.map((suggestion) => (
             <button
-              key={s.title}
+              key={suggestion.title}
               type="button"
-              onClick={() => onPickCandidate(s.title)}
+              onClick={() => onPickCandidate(suggestion.title)}
               className="rounded-lg border border-border bg-background p-3 text-left transition-colors hover:border-emerald-500 hover:bg-emerald-50/40"
             >
               <div className="font-serif font-medium text-foreground">
-                {s.title}
+                {suggestion.title}
               </div>
-              {s.description && (
+              {suggestion.description && (
                 <div className="mt-1 text-sm text-muted-foreground">
-                  {s.description}
+                  {suggestion.description}
                 </div>
               )}
             </button>

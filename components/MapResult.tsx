@@ -29,7 +29,7 @@ export function MapResult({
   // both need to read the same selection.
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const selectedNode = selectedNodeId
-    ? (map.nodes.find((n) => n.id === selectedNodeId) ?? null)
+    ? (map.nodes.find((node) => node.id === selectedNodeId) ?? null)
     : null;
 
   return (

@@ -21,9 +21,9 @@ export async function searchWikipedia(
   query: string,
   limit = 10,
 ): Promise<WikiSearchResult[]> {
-  const q = query.trim();
-  if (!q) return [];
-  const url = `${WIKI_BASE}/w/rest.php/v1/search/page?q=${encodeURIComponent(q)}&limit=${limit}`;
+  const trimmedQuery = query.trim();
+  if (!trimmedQuery) return [];
+  const url = `${WIKI_BASE}/w/rest.php/v1/search/page?q=${encodeURIComponent(trimmedQuery)}&limit=${limit}`;
   const res = await wikiFetch(url);
   if (!res.ok) {
     throw new Error(`Wikipedia search failed: ${res.status} ${res.statusText}`);
@@ -37,16 +37,16 @@ export async function searchWikipedia(
       description?: string;
     }>;
   };
-  return (data.pages ?? []).map((p) => ({
-    title: p.title,
-    pageId: p.id,
-    key: p.key,
-    description: p.description,
+  return (data.pages ?? []).map((page) => ({
+    title: page.title,
+    pageId: page.id,
+    key: page.key,
+    description: page.description,
     excerpt:
-      typeof p.excerpt === "string"
-        ? p.excerpt.replace(/<[^>]+>/g, "")
+      typeof page.excerpt === "string"
+        ? page.excerpt.replace(/<[^>]+>/g, "")
         : undefined,
-    url: p.key ? `${WIKI_BASE}/wiki/${p.key}` : undefined,
+    url: page.key ? `${WIKI_BASE}/wiki/${page.key}` : undefined,
   }));
 }
 
@@ -58,9 +58,9 @@ export async function suggestWikipediaTitles(
   query: string,
   limit = 5,
 ): Promise<WikiSearchResult[]> {
-  const q = query.trim();
-  if (!q) return [];
-  const url = `${WIKI_BASE}/w/api.php?action=opensearch&search=${encodeURIComponent(q)}&limit=${limit}&format=json`;
+  const trimmedQuery = query.trim();
+  if (!trimmedQuery) return [];
+  const url = `${WIKI_BASE}/w/api.php?action=opensearch&search=${encodeURIComponent(trimmedQuery)}&limit=${limit}&format=json`;
   const res = await wikiFetch(url);
   if (!res.ok) return [];
   // opensearch shape: [query, titles[], descriptions[], urls[]]
@@ -88,13 +88,15 @@ export async function fetchDisambiguationCandidates(
   title: string,
   max: number,
 ): Promise<WikiSearchResult[]> {
-  const lc = await fetchWikipediaLinksAndCategories(title).catch(() => ({
+  const linksAndCategories = await fetchWikipediaLinksAndCategories(
+    title,
+  ).catch(() => ({
     links: [] as { title: string }[],
     categories: [] as string[],
   }));
-  return filterAndDedupeLinks(lc.links, max).map((l) => ({
-    title: l.title,
-    url: l.url,
+  return filterAndDedupeLinks(linksAndCategories.links, max).map((link) => ({
+    title: link.title,
+    url: link.url,
   }));
 }
 
@@ -110,12 +112,12 @@ export async function fetchAmbiguousCandidates(
     fetchDisambiguationCandidates(title, 15).catch(() => []),
   ]);
   const seen = new Set<string>();
-  const out: WikiSearchResult[] = [];
-  for (const r of [...search, ...page]) {
-    if (seen.has(r.title)) continue;
-    seen.add(r.title);
-    out.push(r);
-    if (out.length >= max) break;
+  const candidates: WikiSearchResult[] = [];
+  for (const result of [...search, ...page]) {
+    if (seen.has(result.title)) continue;
+    seen.add(result.title);
+    candidates.push(result);
+    if (candidates.length >= max) break;
   }
-  return out;
+  return candidates;
 }

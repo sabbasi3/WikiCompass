@@ -15,10 +15,14 @@ export default function Home() {
 
   const isLoading = state.kind === "loading";
 
-  function handleSubmit(t: string, l: Level, g: string) {
-    setTopic(t);
-    setLevel(l);
-    generate(t, l, g || undefined);
+  function handleSubmit(
+    submittedTopic: string,
+    submittedLevel: Level,
+    submittedGoal: string,
+  ) {
+    setTopic(submittedTopic);
+    setLevel(submittedLevel);
+    generate(submittedTopic, submittedLevel, submittedGoal || undefined);
   }
 
   function handlePickCandidate(picked: string) {

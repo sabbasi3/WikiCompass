@@ -129,14 +129,14 @@ export async function fetchWikipediaLinksAndCategories(
     throw new Error(`Wikipedia parse error: ${data.error.info}`);
   }
   const rawLinks = data.parse?.links ?? [];
-  const rawCats = data.parse?.categories ?? [];
+  const rawCategories = data.parse?.categories ?? [];
   return {
     links: rawLinks
-      .filter((l) => l.ns === 0 && l.exists !== false)
-      .map((l) => ({ title: l.title.replace(/_/g, " ") })),
-    categories: rawCats
-      .filter((c) => !c.hidden)
-      .map((c) => (c.category ?? "").replace(/_/g, " "))
+      .filter((link) => link.ns === 0 && link.exists !== false)
+      .map((link) => ({ title: link.title.replace(/_/g, " ") })),
+    categories: rawCategories
+      .filter((category) => !category.hidden)
+      .map((category) => (category.category ?? "").replace(/_/g, " "))
       .filter(Boolean),
   };
 }
@@ -178,8 +178,8 @@ export async function fetchWikipediaLeadLinks(
   }
   const rawLinks = data.parse?.links ?? [];
   return rawLinks
-    .filter((l) => l.ns === 0 && l.exists !== false)
-    .map((l) => ({ title: l.title.replace(/_/g, " ") }));
+    .filter((link) => link.ns === 0 && link.exists !== false)
+    .map((link) => ({ title: link.title.replace(/_/g, " ") }));
 }
 
 // See Also section links — editor-curated "related concepts," different
@@ -219,7 +219,9 @@ export async function fetchWikipediaSeeAlsoLinks(
     return [];
   }
   const sections = sectionsData.parse?.sections ?? [];
-  const seeAlso = sections.find((s) => /^see\s*also$/i.test(s.line ?? ""));
+  const seeAlso = sections.find((section) =>
+    /^see\s*also$/i.test(section.line ?? ""),
+  );
   if (!seeAlso) return [];
 
   const linksParams = new URLSearchParams({
@@ -254,6 +256,6 @@ export async function fetchWikipediaSeeAlsoLinks(
   }
   const rawLinks = linksData.parse?.links ?? [];
   return rawLinks
-    .filter((l) => l.ns === 0 && l.exists !== false)
-    .map((l) => ({ title: l.title.replace(/_/g, " ") }));
+    .filter((link) => link.ns === 0 && link.exists !== false)
+    .map((link) => ({ title: link.title.replace(/_/g, " ") }));
 }

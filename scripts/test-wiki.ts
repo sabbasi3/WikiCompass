@@ -30,34 +30,34 @@ async function testTopic(topic: string) {
     console.log("    (no results)");
     return;
   }
-  results.forEach((r, i) => {
-    const desc = r.description ? ` — ${r.description}` : "";
-    console.log(`    ${i + 1}. ${r.title}${desc}`);
+  results.forEach((result, i) => {
+    const desc = result.description ? ` — ${result.description}` : "";
+    console.log(`    ${i + 1}. ${result.title}${desc}`);
   });
 
   console.log(`\n[2] getWikipediaContext("${topic}", "beginner"):`);
-  const t1 = Date.now();
+  const contextStartMs = Date.now();
   try {
-    const ctx = await getWikipediaContext(topic, "beginner");
-    console.log(`    (${Date.now() - t1}ms)`);
-    console.log(`    title          : ${ctx.title}`);
-    console.log(`    canonicalUrl   : ${ctx.canonicalUrl}`);
-    console.log(`    summary chars  : ${ctx.summary.length}`);
+    const context = await getWikipediaContext(topic, "beginner");
+    console.log(`    (${Date.now() - contextStartMs}ms)`);
+    console.log(`    title          : ${context.title}`);
+    console.log(`    canonicalUrl   : ${context.canonicalUrl}`);
+    console.log(`    summary chars  : ${context.summary.length}`);
     console.log(
-      `    summary head   : ${ctx.summary.slice(0, 180).replace(/\n/g, " ")}...`,
+      `    summary head   : ${context.summary.slice(0, 180).replace(/\n/g, " ")}...`,
     );
     console.log(
-      `    categories (${ctx.categories.length}): ${ctx.categories.slice(0, 4).join(" | ")}${ctx.categories.length > 4 ? " ..." : ""}`,
+      `    categories (${context.categories.length}): ${context.categories.slice(0, 4).join(" | ")}${context.categories.length > 4 ? " ..." : ""}`,
     );
-    console.log(`    candidateLinks (${ctx.candidateLinks.length}):`);
-    ctx.candidateLinks.slice(0, 15).forEach((l, i) => {
-      console.log(`      ${String(i + 1).padStart(2)}. ${l.title}`);
+    console.log(`    candidateLinks (${context.candidateLinks.length}):`);
+    context.candidateLinks.slice(0, 15).forEach((link, i) => {
+      console.log(`      ${String(i + 1).padStart(2)}. ${link.title}`);
     });
-    if (ctx.candidateLinks.length > 15) {
-      console.log(`      ... and ${ctx.candidateLinks.length - 15} more`);
+    if (context.candidateLinks.length > 15) {
+      console.log(`      ... and ${context.candidateLinks.length - 15} more`);
     }
   } catch (err) {
-    console.log(`    (${Date.now() - t1}ms)`);
+    console.log(`    (${Date.now() - contextStartMs}ms)`);
     if (err instanceof DisambiguationError) {
       console.log(`    AMBIGUOUS — "${err.title}" is a disambiguation page`);
       console.log(
@@ -75,11 +75,11 @@ async function main() {
   const args = process.argv.slice(2);
   const topics = args.length > 0 ? args : DEFAULT_TOPICS;
   console.log(`Testing ${topics.length} topic(s): ${topics.join(", ")}`);
-  for (const t of topics) {
+  for (const topic of topics) {
     try {
-      await testTopic(t);
+      await testTopic(topic);
     } catch (err) {
-      console.error(`\nUnhandled failure for "${t}":`, err);
+      console.error(`\nUnhandled failure for "${topic}":`, err);
     }
   }
   console.log("\n" + bar("-"));

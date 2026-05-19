@@ -22,9 +22,9 @@ export function computeGraphLayout(map: WikiMap): {
   nodes: LayoutNode[];
   edges: LayoutEdge[];
 } {
-  const g = new dagre.graphlib.Graph();
-  g.setDefaultEdgeLabel(() => ({}));
-  g.setGraph({
+  const graph = new dagre.graphlib.Graph();
+  graph.setDefaultEdgeLabel(() => ({}));
+  graph.setGraph({
     rankdir: "TB",
     nodesep: 40,
     ranksep: 50,
@@ -33,33 +33,33 @@ export function computeGraphLayout(map: WikiMap): {
   });
 
   for (const node of map.nodes) {
-    g.setNode(node.id, { width: NODE_WIDTH, height: NODE_HEIGHT });
+    graph.setNode(node.id, { width: NODE_WIDTH, height: NODE_HEIGHT });
   }
   for (const edge of map.edges) {
-    if (g.hasNode(edge.source) && g.hasNode(edge.target)) {
-      g.setEdge(edge.source, edge.target);
+    if (graph.hasNode(edge.source) && graph.hasNode(edge.target)) {
+      graph.setEdge(edge.source, edge.target);
     }
   }
 
-  dagre.layout(g);
+  dagre.layout(graph);
 
   const nodes: LayoutNode[] = map.nodes.map((node) => {
-    const pos = g.node(node.id);
+    const position = graph.node(node.id);
     return {
       id: node.id,
       data: node,
       position: {
-        x: pos ? pos.x - NODE_WIDTH / 2 : 0,
-        y: pos ? pos.y - NODE_HEIGHT / 2 : 0,
+        x: position ? position.x - NODE_WIDTH / 2 : 0,
+        y: position ? position.y - NODE_HEIGHT / 2 : 0,
       },
     };
   });
 
   const edges: LayoutEdge[] = map.edges
     .filter(
-      (e) =>
-        nodes.some((n) => n.id === e.source) &&
-        nodes.some((n) => n.id === e.target),
+      (edge) =>
+        nodes.some((node) => node.id === edge.source) &&
+        nodes.some((node) => node.id === edge.target),
     )
     .map((edge, i) => ({
       id: `e${i}-${edge.source}-${edge.target}`,

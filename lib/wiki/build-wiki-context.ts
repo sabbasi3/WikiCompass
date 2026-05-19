@@ -42,12 +42,13 @@ export async function getWikipediaContext(
   // parallel to reduce latency. See Also is editor-curated "related concepts
   // worth knowing" — different signal from lead links (which are concepts the
   // article *depends on*).
-  const [summary, lc, leadLinks, seeAlsoLinks] = await Promise.all([
-    fetchWikipediaSummary(title),
-    fetchWikipediaLinksAndCategories(title),
-    fetchWikipediaLeadLinks(title),
-    fetchWikipediaSeeAlsoLinks(title),
-  ]);
+  const [summary, linksAndCategories, leadLinks, seeAlsoLinks] =
+    await Promise.all([
+      fetchWikipediaSummary(title),
+      fetchWikipediaLinksAndCategories(title),
+      fetchWikipediaLeadLinks(title),
+      fetchWikipediaSeeAlsoLinks(title),
+    ]);
   // Ambiguity is a deterministic UX choice — never let the model guess which
   // Mercury (planet / element / Freddie / Roman god) the user meant. Throw
   // here; the route catches DisambiguationError and returns 409 with a
@@ -58,14 +59,18 @@ export async function getWikipediaContext(
   // Merge order matters — earlier wins the dedup race in filterAndDedupeLinks.
   // Lead links first (what the article depends on), then See Also (what editors
   // think is related), then the long tail of all other page links.
-  const mergedLinks = [...leadLinks, ...seeAlsoLinks, ...lc.links];
+  const mergedLinks = [
+    ...leadLinks,
+    ...seeAlsoLinks,
+    ...linksAndCategories.links,
+  ];
   const candidateLinks = filterAndDedupeLinks(mergedLinks, MAX_CANDIDATE_LINKS);
   return {
     title: summary.title,
     summary: summary.extract,
     canonicalUrl: summary.canonicalUrl,
     candidateLinks,
-    categories: lc.categories.slice(0, 12),
+    categories: linksAndCategories.categories.slice(0, 12),
     userLevel,
     userGoal,
   };

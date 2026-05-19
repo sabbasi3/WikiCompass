@@ -1,4 +1,4 @@
-// Interactive graph canvas. 
+// Interactive graph canvas.
 // Clicking a node highlights its incident edges (darker stroke, thicker, white-pill
 // labels) and dims everything else — "click a node to see its world."
 // Layout is computed once per map via dagre (lib/graph-layout.ts).
@@ -39,22 +39,22 @@ export function KnowledgeGraph({
   selectedNodeId: string | null;
   onSelectNode: (id: string | null) => void;
 }) {
-  const initial = useMemo(() => {
+  const initialLayout = useMemo(() => {
     const layout = computeGraphLayout(map);
-    const initialNodes: RFNode[] = layout.nodes.map((n) => ({
-      id: n.id,
+    const nodes: RFNode[] = layout.nodes.map((node) => ({
+      id: node.id,
       type: "concept",
-      position: n.position,
-      data: n.data,
+      position: node.position,
+      data: node.data,
     }));
-    const initialEdges: RFEdge[] = layout.edges.map((e) => ({
-      id: e.id,
-      source: e.source,
-      target: e.target,
+    const edges: RFEdge[] = layout.edges.map((edge) => ({
+      id: edge.id,
+      source: edge.source,
+      target: edge.target,
       // Stash the relationship text in `data` so we can re-derive the
       // label conditionally based on which node is selected. Default
       // edges render without labels for a clean, uncluttered view.
-      data: { relationship: e.label },
+      data: { relationship: edge.label },
       style: { stroke: "#a1a1aa", strokeWidth: 1.5 },
       markerEnd: {
         type: MarkerType.ArrowClosed,
@@ -63,14 +63,15 @@ export function KnowledgeGraph({
         height: 16,
       },
     }));
-    return { initialNodes, initialEdges };
+    return { nodes, edges };
   }, [map]);
 
-  const [nodes, , onNodesChange] = useNodesState(initial.initialNodes);
-  const [edges, , onEdgesChange] = useEdgesState(initial.initialEdges);
+  const [nodes, , onNodesChange] = useNodesState(initialLayout.nodes);
+  const [edges, , onEdgesChange] = useEdgesState(initialLayout.edges);
 
   const styledNodes = useMemo(
-    () => nodes.map((n) => ({ ...n, selected: n.id === selectedNodeId })),
+    () =>
+      nodes.map((node) => ({ ...node, selected: node.id === selectedNodeId })),
     [nodes, selectedNodeId],
   );
 
@@ -79,14 +80,14 @@ export function KnowledgeGraph({
   // selected, only its incident edges get labels (with white-backed pills
   // so they're always readable even if two short edges share a midpoint).
   const styledEdges = useMemo(() => {
-    return edges.map((e) => {
+    return edges.map((edge) => {
       const isConnected =
         selectedNodeId &&
-        (e.source === selectedNodeId || e.target === selectedNodeId);
+        (edge.source === selectedNodeId || edge.target === selectedNodeId);
       if (isConnected) {
         return {
-          ...e,
-          label: (e.data?.relationship as string | undefined) ?? "",
+          ...edge,
+          label: (edge.data?.relationship as string | undefined) ?? "",
           labelStyle: { fontSize: 11, fill: "#52525b", fontWeight: 500 },
           labelBgStyle: { fill: "white" },
           labelBgPadding: [4, 4] as [number, number],
@@ -103,7 +104,7 @@ export function KnowledgeGraph({
       // Dim non-connected edges when something is selected — focuses attention.
       if (selectedNodeId) {
         return {
-          ...e,
+          ...edge,
           label: undefined,
           style: { stroke: "#d4d4d8", strokeWidth: 1 },
           markerEnd: {
@@ -114,7 +115,7 @@ export function KnowledgeGraph({
           },
         };
       }
-      return { ...e, label: undefined };
+      return { ...edge, label: undefined };
     });
   }, [edges, selectedNodeId]);
 

@@ -33,15 +33,15 @@ export function GroundingPanel({ grounding }: { grounding: Grounding }) {
             Show the {grounding.selectedConcepts.length} cited articles
           </summary>
           <ul className="mt-2 grid grid-cols-1 gap-x-6 gap-y-1 text-xs sm:grid-cols-2">
-            {grounding.selectedConcepts.map((c) => (
-              <li key={c.title}>
+            {grounding.selectedConcepts.map((concept) => (
+              <li key={concept.title}>
                 <a
-                  href={c.url}
+                  href={concept.url}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-foreground/70 transition-colors hover:text-emerald-700 hover:underline"
                 >
-                  {c.title}
+                  {concept.title}
                 </a>
               </li>
             ))}

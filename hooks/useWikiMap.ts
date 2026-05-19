@@ -58,8 +58,8 @@ export function useWikiMap() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ topic, level, userGoal }),
         });
-        const data = (await res.json()) as WikiMapState;
-        setState(data);
+        const nextState = (await res.json()) as WikiMapState;
+        setState(nextState);
       } catch (err) {
         setState({
           kind: "error",

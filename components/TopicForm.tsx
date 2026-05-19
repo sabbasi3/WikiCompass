@@ -123,15 +123,15 @@ export function TopicForm({
         {/* Suggested topics — pill-style with emerald hover */}
         <div className="mt-4 flex flex-wrap items-center gap-2 text-sm">
           <span className="text-muted-foreground">Try:</span>
-          {EXAMPLES.map((ex) => (
+          {EXAMPLES.map((example) => (
             <button
-              key={ex}
+              key={example}
               type="button"
-              onClick={() => onTopicChange(ex)}
+              onClick={() => onTopicChange(example)}
               disabled={disabled}
               className="rounded-full border border-border bg-background px-3 py-1.5 text-foreground/70 transition-colors hover:border-emerald-500 hover:text-emerald-700 disabled:opacity-50"
             >
-              {ex}
+              {example}
             </button>
           ))}
         </div>

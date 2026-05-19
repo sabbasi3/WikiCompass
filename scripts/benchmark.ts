@@ -8,23 +8,23 @@ import {
 } from "../lib/validation";
 import { verifyWikipediaUrls } from "../lib/wiki/verify";
 
-// Approximate public per-M-token pricing (USD), late 2025 / early 2026.
-// These move; the comparison shape matters more than the absolute dollars.
-const PRICING: Record<string, { in: number; out: number }> = {
-  "google/gemini-2.5-flash-lite": { in: 0.1, out: 0.4 },
-  "google/gemini-2.5-flash": { in: 0.3, out: 2.5 },
-  "anthropic/claude-haiku-4-5": { in: 1.0, out: 5.0 },
-  "openai/gpt-5-nano": { in: 0.05, out: 0.4 },
-  "openai/gpt-5-mini": { in: 0.25, out: 2.0 },
-  "openai/gpt-4.1-mini": { in: 0.4, out: 1.6 },
+// Per-million-token pricing in USD, late 2025 / early 2026. These move;
+// the comparison shape matters more than the absolute dollars.
+const PRICING: Record<string, { inputPerM: number; outputPerM: number }> = {
+  "google/gemini-2.5-flash-lite": { inputPerM: 0.1, outputPerM: 0.4 },
+  "google/gemini-2.5-flash": { inputPerM: 0.3, outputPerM: 2.5 },
+  "anthropic/claude-haiku-4-5": { inputPerM: 1.0, outputPerM: 5.0 },
+  "openai/gpt-5-nano": { inputPerM: 0.05, outputPerM: 0.4 },
+  "openai/gpt-5-mini": { inputPerM: 0.25, outputPerM: 2.0 },
+  "openai/gpt-4.1-mini": { inputPerM: 0.4, outputPerM: 1.6 },
 };
 
 const MODELS = Object.keys(PRICING);
 
-function fmtCost(c: number): string {
-  if (c < 0.001) return `$${c.toFixed(5)}`;
-  if (c < 0.01) return `$${c.toFixed(4)}`;
-  return `$${c.toFixed(3)}`;
+function formatCost(cost: number): string {
+  if (cost < 0.001) return `$${cost.toFixed(5)}`;
+  if (cost < 0.01) return `$${cost.toFixed(4)}`;
+  return `$${cost.toFixed(3)}`;
 }
 
 async function main() {
@@ -60,35 +60,36 @@ async function main() {
   for (const model of MODELS) {
     console.log(`[${model}] running...`);
     try {
-      const t0 = Date.now();
       const { map, usage, latencyMs } = await generateWikiMap(context, model);
 
-      const allowed = buildAllowedUrlSet(context);
-      const unknownPairs = collectUnknownUrls(map, allowed);
+      const allowedUrls = buildAllowedUrlSet(context);
+      const unknownUrls = collectUnknownUrls(map, allowedUrls);
       const verified =
-        unknownPairs.length > 0
-          ? await verifyWikipediaUrls(unknownPairs)
+        unknownUrls.length > 0
+          ? await verifyWikipediaUrls(unknownUrls)
           : new Set<string>();
-      for (const url of verified) allowed.add(url);
-      const stripResult = stripHallucinatedUrls(map, allowed);
+      for (const url of verified) allowedUrls.add(url);
+      const stripResult = stripHallucinatedUrls(map, allowedUrls);
       const integrity = checkGraphIntegrity(stripResult.map);
 
-      const inputT = usage?.inputTokens ?? 0;
-      const outputT = usage?.outputTokens ?? 0;
+      const inputTokens = usage?.inputTokens ?? 0;
+      const outputTokens = usage?.outputTokens ?? 0;
       const price = PRICING[model];
-      const cost = (inputT * price.in + outputT * price.out) / 1_000_000;
+      const cost =
+        (inputTokens * price.inputPerM + outputTokens * price.outputPerM) /
+        1_000_000;
 
       const row: Row = {
         model,
         status: "ok",
         latencyMs,
-        inputTokens: inputT,
-        outputTokens: outputT,
-        totalTokens: usage?.totalTokens ?? inputT + outputT,
+        inputTokens,
+        outputTokens,
+        totalTokens: usage?.totalTokens ?? inputTokens + outputTokens,
         nodes: map.nodes.length,
         edges: map.edges.length,
         pathLen: map.learningPath.length,
-        unknownUrls: unknownPairs.length,
+        unknownUrls: unknownUrls.length,
         verifiedUrls: verified.size,
         stripped:
           stripResult.strippedNodeUrls.length +
@@ -98,7 +99,7 @@ async function main() {
       };
       rows.push(row);
       console.log(
-        `  ${(latencyMs / 1000).toFixed(1)}s | ${map.nodes.length} nodes | ${fmtCost(cost)} | unknown=${unknownPairs.length} verified=${verified.size} stripped=${row.stripped}`,
+        `  ${(latencyMs / 1000).toFixed(1)}s | ${map.nodes.length} nodes | ${formatCost(cost)} | unknown=${unknownUrls.length} verified=${verified.size} stripped=${row.stripped}`,
       );
     } catch (err) {
       const error = err instanceof Error ? err.message : String(err);
@@ -108,39 +109,39 @@ async function main() {
   }
 
   // Sort by latency ascending (winners on top)
-  const ok = rows.filter((r) => r.status === "ok");
-  const fail = rows.filter((r) => r.status === "fail");
-  ok.sort((a, b) => (a.latencyMs ?? 0) - (b.latencyMs ?? 0));
+  const okRows = rows.filter((row) => row.status === "ok");
+  const failedRows = rows.filter((row) => row.status === "fail");
+  okRows.sort((a, b) => (a.latencyMs ?? 0) - (b.latencyMs ?? 0));
 
   console.log("\n\n=== Markdown table ===\n");
   console.log("| Model | Latency | Cost/map | Nodes | Path | Integrity |");
   console.log("|---|---:|---:|---:|---:|:---:|");
-  for (const r of ok) {
+  for (const row of okRows) {
     const integrity =
-      r.integrityIssues === 0 ? "✓" : `${r.integrityIssues} issues`;
+      row.integrityIssues === 0 ? "✓" : `${row.integrityIssues} issues`;
     console.log(
-      `| \`${r.model}\` | ${(r.latencyMs! / 1000).toFixed(1)}s | ${fmtCost(r.cost!)} | ${r.nodes} | ${r.pathLen} | ${integrity} |`,
+      `| \`${row.model}\` | ${(row.latencyMs! / 1000).toFixed(1)}s | ${formatCost(row.cost!)} | ${row.nodes} | ${row.pathLen} | ${integrity} |`,
     );
   }
-  for (const r of fail) {
-    console.log(`| \`${r.model}\` | — | — | — | — | FAIL: ${r.error} |`);
+  for (const row of failedRows) {
+    console.log(`| \`${row.model}\` | — | — | — | — | FAIL: ${row.error} |`);
   }
 
   console.log("\n=== URL safety pipeline summary ===\n");
   console.log("| Model | Unknown URLs | Verified | Stripped |");
   console.log("|---|---:|---:|---:|");
-  for (const r of ok) {
+  for (const row of okRows) {
     console.log(
-      `| \`${r.model}\` | ${r.unknownUrls} | ${r.verifiedUrls} | ${r.stripped} |`,
+      `| \`${row.model}\` | ${row.unknownUrls} | ${row.verifiedUrls} | ${row.stripped} |`,
     );
   }
 
   console.log("\n=== Cost at scale (100K maps) ===\n");
   console.log("| Model | Per map | 100K maps |");
   console.log("|---|---:|---:|");
-  for (const r of ok) {
+  for (const row of okRows) {
     console.log(
-      `| \`${r.model}\` | ${fmtCost(r.cost!)} | $${(r.cost! * 100_000).toFixed(0)} |`,
+      `| \`${row.model}\` | ${formatCost(row.cost!)} | $${(row.cost! * 100_000).toFixed(0)} |`,
     );
   }
 }
