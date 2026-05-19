@@ -105,4 +105,3 @@ export const quizzes = pgTable(
 export type JourneyRow = typeof journeys.$inferSelect;
 export type JourneyInsert = typeof journeys.$inferInsert;
 export type QuizRow = typeof quizzes.$inferSelect;
-export type QuizInsert = typeof quizzes.$inferInsert;

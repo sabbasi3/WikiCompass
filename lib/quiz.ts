@@ -21,7 +21,7 @@ import type { JourneyLevel } from "./journey/schema";
 
 // ── Schema ────────────────────────────────────────────────────────────
 
-export const quizQuestionSchema = z.object({
+const quizQuestionSchema = z.object({
   id: z.string().min(1).max(50),
   prompt: z.string().min(10).max(500),
   answer: z.string().min(1).max(500),
@@ -45,7 +45,7 @@ export type Quiz = z.infer<typeof quizSchema>;
 // pedagogical axis (what to ask). Keeping them separate lets us tune
 // either without touching the other.
 
-export const DIFFICULTY_BY_ROUND: Record<1 | 2 | 3, Quiz["difficulty"]> = {
+const DIFFICULTY_BY_ROUND: Record<1 | 2 | 3, Quiz["difficulty"]> = {
   1: "recognition", // can you spot the right answer among options?
   2: "recall", // can you produce the answer unprompted?
   3: "application", // can you explain how concepts connect?
@@ -76,7 +76,7 @@ const LEVEL_GUIDANCE: Record<JourneyLevel, string> = {
     "Press on subtleties and edge cases. Questions can compare nodes, ask about trade-offs, or reference relationships between concepts.",
 };
 
-export function buildQuizPrompt(
+function buildQuizPrompt(
   map: WikiMap,
   round: 1 | 2 | 3,
   level: JourneyLevel,
