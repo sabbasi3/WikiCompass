@@ -42,18 +42,16 @@ export function collectUnknownUrls(
   return out;
 }
 
-// Remove any Wikipedia URLs from nodes and learningPath that are not in the allowed set.
-// This prevents "hallucinated" (AI-invented or non-canonical) links from leaking into the UI.
-// Stripped URLs are collected for downstream reporting/debugging.
+// Final URL filter — runs AFTER verify has added Wikipedia-confirmed URLs
+// to `allowed`, so what gets stripped here is genuinely unverifiable.
+// Null URLs render as plain text in the UI.
 export function stripHallucinatedUrls(
   map: WikiMap,
   allowed: Set<string>,
 ): StripResult {
-  // Collect URLs that are not in the allowed set for reporting/debugging.
   const strippedNodeUrls: string[] = [];
   const strippedPathUrls: string[] = [];
 
-  // Remove Wikipedia URLs from nodes if they are not in the allowed set.
   const nodes = map.nodes.map((n) => {
     if (n.wikipediaUrl && !allowed.has(n.wikipediaUrl)) {
       strippedNodeUrls.push(`${n.title}: ${n.wikipediaUrl}`);
@@ -62,7 +60,9 @@ export function stripHallucinatedUrls(
     return n;
   });
 
-  // Do the same for the learning path, which may reference a subset of nodes.
+  // Same pass for the learning path — its steps reference URLs independently
+  // from the nodes array (the model can supply a URL on a path step without
+  // a matching node).
   const learningPath = map.learningPath.map((s) => {
     if (s.wikipediaUrl && !allowed.has(s.wikipediaUrl)) {
       strippedPathUrls.push(`${s.title}: ${s.wikipediaUrl}`);
@@ -88,6 +88,15 @@ export type GraphIssue = {
   detail: string;
 };
 
+// Structural validation of the AI's output. Catches four classes of bug:
+//   - Dangling edges: source or target id doesn't match any node
+//   - Wrong main_topic count: must be exactly 1 (rule 5 in the prompt)
+//   - Node count out of [8, 18] range (rule 5)
+//   - Learning path length out of [4, 10] range (rule 7)
+// Non-blocking by design: we ship the issues in meta and keep rendering.
+// A graph with one bad edge is still ~95% useful, and React Flow silently
+// ignores edges with missing endpoints anyway. Hard-failing would punish
+// the user for a model glitch that the eval suite already tracks.
 export function checkGraphIntegrity(map: WikiMap): GraphIssue[] {
   const issues: GraphIssue[] = [];
   const nodeIds = new Set(map.nodes.map((n) => n.id));

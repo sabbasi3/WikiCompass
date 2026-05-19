@@ -1,3 +1,8 @@
+// Interactive graph canvas. 
+// Clicking a node highlights its incident edges (darker stroke, thicker, white-pill
+// labels) and dims everything else — "click a node to see its world."
+// Layout is computed once per map via dagre (lib/graph-layout.ts).
+
 "use client";
 
 import { useMemo } from "react";

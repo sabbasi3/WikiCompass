@@ -1,6 +1,13 @@
+// Rate limit for the AI generation endpoint. Upstash because it speaks HTTPS — standard Redis needs
+// persistent TCP connections which serverless functions can't pool.
+//
+// Fail-open: if KV env vars are missing, the limiter is null and we serve
+// requests without rate-checking. A legitimate user being denied because
+// someone forgot to wire an env var is worse than an attacker briefly
+// running up a few dollars in AI bills before someone notices.
 import { Ratelimit } from "@upstash/ratelimit";
 import { Redis } from "@upstash/redis";
-import { NextResponse } from "next/server"; //  Next.js helper for building HTTP responses with status codes and headers
+import { NextResponse } from "next/server";
 
 const url = process.env.KV_REST_API_URL;
 const token = process.env.KV_REST_API_TOKEN;
@@ -10,12 +17,18 @@ const kvConfigured = Boolean(url && token);
 export const mapRateLimit = kvConfigured
   ? new Ratelimit({
       redis: new Redis({ url: url!, token: token! }),
+      // Sliding window over fixed window: fixed window has a known burst
+      // exploit (10 at :59 + 10 at :00 = 20 in 1 second). Sliding closes it.
       limiter: Ratelimit.slidingWindow(10, "1 m"),
       analytics: true,
       prefix: "wikicompass:map",
     })
   : null;
 
+// Try the most-trusted proxy header first (x-vercel-forwarded-for is set
+// by Vercel's edge), then fall back to standard proxy headers. Known
+// limitation: NAT'd networks (universities, mobile carriers) share an IP
+// and can collectively hit the limit. Production fix is per-user limiting.
 export function getClientIp(req: Request): string {
   const clientIp = req.headers.get("x-vercel-forwarded-for");
   if (clientIp) return clientIp.split(",")[0].trim();

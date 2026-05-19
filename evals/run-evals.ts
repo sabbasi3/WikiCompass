@@ -1,3 +1,19 @@
+// Eval runner. Two tiers of checks:
+//   - Gating (deterministic): schema validity, graph integrity, URL
+//     grounding, topic-type inference, regression on disambig/not_found.
+//     Failure exits non-zero. These MUST hold.
+//   - Info signals (probabilistic): does "Supervised learning" appear in
+//     the ML map? Does the audience adaptation actually differ across
+//     levels (Jaccard < 0.85)? Reported but not gated.
+//
+// Treating probabilistic outputs as gating cries wolf — model variance
+// would make CI red on every run. Treating them as silent would let real
+// regressions slip. Two tiers solves both.
+//
+// Mirrors the route's full pipeline (Wikipedia → AI → verify → strip)
+// so eval results describe what users actually see, not pre-verification
+// behavior that no real user encounters.
+
 import fs from "node:fs";
 import path from "node:path";
 

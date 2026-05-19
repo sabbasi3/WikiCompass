@@ -12,14 +12,11 @@ import {
   fetchWikipediaSummary,
 } from "./api";
 
-// Cap on the candidate link set sent to the model. Originally 60 (brief's
-// upper bound). Bumped to 100 to make room for See Also links, then to
-// 150 after measuring: dropped the model's "outside the candidate set"
-// rate from ~25% to ~3%. Tried 200 but it introduced eval variance —
-// across 3 runs, pass rates were 10/11, 8/11, 11/11. 150 ran 11/11 on
-// repeated runs. More candidates means more material for the model to
-// juggle, which occasionally pushes it into schema-violation territory.
-// 150 is the sweet spot: good coverage, stable output.
+// Cap tuned empirically. At 60 the model reaches outside the set ~25% of
+// the time. At 150 it drops to ~3%. Tried 200 — eval pass rate became
+// unstable (10/11, 8/11, 11/11 across runs) because the bigger input
+// pushes some generations into schema-violation territory. 150 is the
+// sweet spot: good coverage, stable eval output.
 const MAX_CANDIDATE_LINKS = 150;
 
 export type WikiContext = {
@@ -47,7 +44,10 @@ export async function getWikipediaContext(
     fetchWikipediaLeadLinks(title),
     fetchWikipediaSeeAlsoLinks(title),
   ]);
-  // Disambiguation is a deterministic UX choice; do not send ambiguous topics to the model.
+  // Ambiguity is a deterministic UX choice — never let the model guess which
+  // Mercury (planet / element / Freddie / Roman god) the user meant. Throw
+  // here; the route catches DisambiguationError and returns 409 with a
+  // chooser candidate list. See app/api/wiki/map/route.ts.
   if (summary.type === "disambiguation") {
     throw new DisambiguationError(summary.title);
   }

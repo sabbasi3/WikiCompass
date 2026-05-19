@@ -1,3 +1,11 @@
+// Orchestrates one map generation: Wikipedia fetch → AI generate → URL
+// verify-then-strip → grounding compute → response. Every catch block
+// below is a deliberate failure mode that returns a degraded-but-useful
+// response — kind: "ai_failed", "disambiguation", "not_found", or "error".
+// Every response carries a `kind` field so the UI can switch on it. New
+// failure states are added by adding a `kind` — the compiler then forces
+// the UI to handle the new case.
+
 import { NextResponse } from "next/server";
 
 import {
@@ -51,6 +59,7 @@ export async function POST(req: Request) {
   }
   const { topic, level, userGoal } = parsed.data;
 
+  // Sliding window via Upstash. Fail-open if KV isn't configured (see lib/rate-limit.ts).
   const rate = await checkRateLimit(req);
   if (!rate.ok) return rate.response;
   const rateHeaders = rate.headers;
@@ -59,6 +68,8 @@ export async function POST(req: Request) {
   try {
     context = await getWikipediaContext(topic, level, userGoal);
   } catch (err) {
+    // Ambiguous topic ("Mercury" → planet/element/myth/…). Don't ask the
+    // model to guess — let the human pick from a chooser.
     if (err instanceof DisambiguationError) {
       const candidates = await fetchAmbiguousCandidates(err.title, 15).catch(
         () => [],
@@ -68,11 +79,9 @@ export async function POST(req: Request) {
         { status: 409, headers: rateHeaders },
       );
     }
+    // Not found = typo. Soft-fail did-you-mean via opensearch; still
+    // return 404 even if the suggestion lookup itself dies.
     if (err instanceof WikipediaNotFoundError) {
-      // Surface up to 5 "Did you mean..." suggestions via Wikipedia's
-      // opensearch (fuzzy/typo-tolerant) so a misspelling doesn't dead-
-      // end the user. Soft-fail on search error — we still want to
-      // return the 404 even if the suggestion lookup dies.
       const suggestions = await suggestWikipediaTitles(topic, 5).catch(
         () => [],
       );
@@ -81,9 +90,8 @@ export async function POST(req: Request) {
         { status: 404, headers: rateHeaders },
       );
     }
-    // Log the detail server-side; return a generic message to the client
-    // so we don't leak internal error strings, library version hints, or
-    // upstream identifiers in the public response.
+    // Security: full err to server logs, generic message to client. No
+    // library version, upstream identifier, or stack trace in 5xx bodies.
     console.error(
       "[wiki/map] Wikipedia fetch failed:",
       err instanceof Error ? err.message : String(err),
@@ -94,16 +102,10 @@ export async function POST(req: Request) {
     );
   }
 
-  // Two retry layers compose:
-  //   1. The AI SDK retries transport failures internally (network,
-  //      rate-limit 429s, provider 5xx). Default maxRetries = 2 means
-  //      generateWikiMap() can attempt up to 3 calls before throwing.
-  //   2. When generateWikiMap() throws here, it's a *content* failure
-  //      that survived the SDK's transport retries — Zod schema rejected
-  //      the model's output, or parsing failed. We give the model one
-  //      more shot in case the next generation is shaped better; if that
-  //      fails too, degrade to ai_failed with the Wikipedia fallback so
-  //      the user can still explore the topic.
+  // Two retry layers compose: AI SDK handles transport (maxRetries=2
+  // default → up to 3 attempts), we handle content here (one retry, then
+  // degrade). When generateWikiMap() throws, transport was already retried
+  // — it's a content failure (Zod rejected the shape, or JSON truncated).
   let mapResult: GenerateWikiMapResult;
   let retries = 0;
   try {
@@ -140,10 +142,10 @@ export async function POST(req: Request) {
   let map = mapResult.map;
   const allowed = buildAllowedUrlSet(context);
 
-  // The model can write URLs not in our candidateLinks set. Most are real
-  // Wikipedia articles we just didn't include (cap is 60; popular topics
-  // have hundreds of outgoing links). Verify them against Wikipedia in
-  // parallel before stripping — keep the reals, drop the genuinely fake.
+  // Verify-then-strip: model still writes URLs outside candidates ~3% of
+  // the time (cap=150). Most are real articles we didn't include — hit
+  // Wikipedia in parallel + title-match check (Jaccard ≥ 0.6) to keep
+  // the reals; everything else gets stripped to null.
   const unknownUrls = collectUnknownUrls(map, allowed);
   const verified =
     unknownUrls.length > 0
@@ -158,9 +160,8 @@ export async function POST(req: Request) {
 
   const stripResult = stripHallucinatedUrls(map, allowed);
   map = stripResult.map;
-  // Strip silently from the user's perspective — the map still renders
-  // (with null URLs replaced). Log to server console so we capture the
-  // pattern of hallucinations in Vercel function logs / dev terminal.
+  // Silent strip from the user's POV; loud server logs so we can track
+  // the model's drift pattern over time in Vercel function logs.
   const totalStripped =
     stripResult.strippedNodeUrls.length + stripResult.strippedPathUrls.length;
   if (totalStripped > 0) {
@@ -173,12 +174,11 @@ export async function POST(req: Request) {
     );
   }
 
-  // Grounding is server-computed metadata about the generation. It
-  // lives alongside the map in the response, not inside it — the AI
-  // schema only describes AI output, and grounding is provably not
-  // AI output.
+  // Grounding lives alongside the map, not inside it — provably not AI output.
   const grounding = computeGrounding(map, context);
 
+  // graphIssues is non-blocking (see checkGraphIntegrity).
+  // internalMeta exposes stripped URLs in dev only (debugging).
   const graphIssues = checkGraphIntegrity(map);
   const internalMeta =
     process.env.NODE_ENV !== "production"

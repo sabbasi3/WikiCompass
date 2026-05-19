@@ -1,3 +1,7 @@
+// The prompt is split into two messages by deliberate design:
+//   - system = the contract (12 numbered rules). Same every request.
+//   - user = the topic-specific data (summary, candidates, level).
+
 import type { WikiContext } from "../wiki";
 import {
   LEARNING_PATH_MAX,

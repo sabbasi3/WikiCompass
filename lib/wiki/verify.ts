@@ -1,21 +1,13 @@
-// Post-generation URL verification with title-match check.
-//
-// The model can produce Wikipedia URLs that aren't in the candidateLinks
-// set we sent. Most are real articles we just didn't include (cap is 100;
-// popular topics link to hundreds), but some are wrong — the model
-// sometimes pairs a node title with a URL whose article is about a
-// different topic (e.g. "Statistical learning" -> the linguistics article).
-//
-// We require two things to keep a URL:
-//   1. The URL resolves to a real, non-disambiguation Wikipedia article.
-//   2. The resolved article's title matches the model's intended node
-//      title (Jaccard similarity >= 0.5 on word sets, after stopword
-//      removal and crude plural stemming).
-//
-// False rejects (real link dropped) just leave the node without a link —
-// the same degradation we had before verification existed.
-// False accepts (wrong link kept) would mislead the user — strictly worse.
-// The asymmetry justifies erring conservative.
+// Post-generation URL verification. Some URLs the model writes outside
+// our 150-candidate set are real articles we didn't include; some are
+// real articles about the wrong topic (e.g. "Statistical learning" →
+// the linguistics article). Keep a URL only if BOTH:
+//   1. It resolves to a real, non-disambiguation Wikipedia article.
+//   2. The resolved article's title roughly matches the model's intended
+//      node title (Jaccard ≥ 0.6 on word sets, after stopword removal
+//      and crude plural stemming).
+// Errs conservative: false rejects just leave the node without a link
+// (same as the old strip behavior). False accepts would mislead.
 
 import { WIKI_BASE, fetchWikipediaSummary } from "./api";
 

@@ -1,6 +1,6 @@
 // Used Zod to define and enforce the structure of data coming from the AI model, API requests, or external sources.
 // catch malformed model output, prevent json parse failure. shape might be wrong — missing fields, extra fields, a string where you expected a number.
-// AI SDK converts Zod schemas to JSON Schema and passes that to the model provider's structured-output API, 
+// AI SDK converts Zod schemas to JSON Schema and passes that to the model provider's structured-output API,
 // so the model is constrained to produce conformant output, not just validated after the fact.
 
 import { z } from "zod";
@@ -33,7 +33,7 @@ export const mapRequestSchema = z.object({
 
 // Length caps are circuit-breakers, not content controls. They protect
 // against runaway model output bloating the client payload or persisted
-// storage. Set generously (3-5x expected length) 
+// storage. Set generously (3-5x expected length)
 // Array bounds for nodes and learningPath come from ./ai/constants and
 // are also referenced by the prompt and the post-hoc graph integrity
 // check, so all three layers move together.
@@ -110,17 +110,15 @@ export const wikiMapSchema = z.object({
     .max(40),
 });
 
-// Server-computed metadata about an AI generation. Not part of the AI
-// schema — these values come from the Wikipedia context we built and
-// from filtering the model's output, never from the model itself.
-// Travels alongside the WikiMap in the route response.
+// Server-computed grounding. NOT in the AI schema — the model can't be
+// trusted to count its own citations. Travels alongside the WikiMap in
+// the route response.
 export type Grounding = {
   mainArticleTitle: string;
   candidateLinkCount: number;
   selectedConceptCount: number;
-  // Citations the map made — each entry is a node that had a verified
-  // Wikipedia URL after the strip pass. UI renders these as clickable
-  // links so the user can verify any cited source.
+  // Verified citations only (passed strip + URL verify). UI renders as
+  // clickable links so users can verify any cited source.
   selectedConcepts: { title: string; url: string }[];
 };
 
