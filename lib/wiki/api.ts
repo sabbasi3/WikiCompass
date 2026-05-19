@@ -43,22 +43,22 @@ export type WikiLinksAndCategories = {
   categories: string[];
 };
 
-// All Wikipedia API calls funnel through here — one place to adjust the
-// User-Agent, cache window, or add timeout/retry policy later. Repeated
-// requests for the same URL are served from Next.js Data Cache; measured
-// 142ms cold → 2ms warm on the same URL with revalidate=3600.
+// All Wikipedia API calls funnel through here. cache: "force-cache" +
+// next.revalidate engage the Vercel Data Cache — durable across instances
+// and deployments, measured 142ms cold → 2ms warm. Next.js 16 requires
+// the explicit cache option; next.revalidate alone doesn't opt in.
 export async function wikiFetch(
   url: string,
   revalidate = 3600,
 ): Promise<Response> {
-  const init: RequestInit & { next?: { revalidate: number } } = {
+  return fetch(url, {
     headers: {
       "User-Agent": WIKI_USER_AGENT,
       Accept: "application/json",
     },
+    cache: "force-cache",
     next: { revalidate },
-  };
-  return fetch(url, init);
+  });
 }
 
 export function titleToUrl(title: string): string {
