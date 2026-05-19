@@ -58,6 +58,7 @@ export function JourneyEmail({
               topic={payload.topic}
               round={payload.round}
               quiz={payload.quiz}
+              statusUrl={statusUrl}
             />
           )}
           {payload.kind === "completion" && (
@@ -112,10 +113,12 @@ function QuizBody({
   topic,
   round,
   quiz,
+  statusUrl,
 }: {
   topic: string;
   round: 1 | 2 | 3;
   quiz: Quiz;
+  statusUrl: string;
 }) {
   const dayLabel = ({ 1: 1, 2: 3, 3: 7 } as const)[round];
   const difficultyLabel = quiz.difficulty;
@@ -124,7 +127,8 @@ function QuizBody({
       <Text style={p}>
         Day {dayLabel} check-in on <strong>{topic}</strong> —{" "}
         {quiz.questions.length} {difficultyLabel}-level question
-        {quiz.questions.length === 1 ? "" : "s"}.
+        {quiz.questions.length === 1 ? "" : "s"}. Try to answer each one in your
+        head before checking yourself.
       </Text>
       {quiz.questions.map((q, i) => (
         <Section key={q.id} style={questionBlock}>
@@ -133,14 +137,17 @@ function QuizBody({
               {i + 1}. {q.prompt}
             </strong>
           </Text>
-          <Text style={muted}>
-            Answer: <span style={answer}>{q.answer}</span>
-          </Text>
         </Section>
       ))}
-      <Text style={p}>
-        These concepts are pulled from your original map. Open the{" "}
-        <strong>View on the web</strong> link below to revisit it.
+      <Section style={ctaWrap}>
+        <Link href={statusUrl} style={cta}>
+          Reveal answers on the web →
+        </Link>
+      </Section>
+      <Text style={muted}>
+        Answers are hidden behind a click on the status page — same recall
+        mechanic as a flashcard, so you actually have to retrieve before you
+        verify.
       </Text>
     </>
   );
@@ -233,8 +240,20 @@ const question: React.CSSProperties = {
   margin: "0 0 6px",
 };
 
-const answer: React.CSSProperties = {
-  color: "#047857",
+const ctaWrap: React.CSSProperties = {
+  margin: "8px 0 16px",
+  textAlign: "center",
+};
+
+const cta: React.CSSProperties = {
+  backgroundColor: "#047857",
+  borderRadius: "8px",
+  color: "#ffffff",
+  display: "inline-block",
+  fontSize: "14px",
+  fontWeight: 600,
+  padding: "10px 18px",
+  textDecoration: "none",
 };
 
 const divider: React.CSSProperties = {
