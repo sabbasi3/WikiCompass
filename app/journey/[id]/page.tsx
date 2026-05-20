@@ -5,11 +5,13 @@
 //
 // Render layout:
 //   Header     — topic, level, status, started date
-//   Timeline   — 3 quiz rounds with delivery state + skip-ahead control
 //   MapResult  — the canonical map UI (TopicOverview / WarningsPanel /
 //                KnowledgeGraph / LearningPath / GroundingPanel). Same
 //                component the one-shot lookup uses, so journey users
 //                get a strict superset: the full map PLUS the quizzes.
+//   Timeline   — 3 quiz rounds with delivery state + skip-ahead control.
+//                Sits below the map because the map is the primary content;
+//                quizzes are a time-shifted follow-up.
 //
 // force-dynamic: opt out of Next.js static/ISR caching so the page is
 // server-rendered fresh on every request. Required here because the
@@ -58,7 +60,6 @@ export default async function JourneyPage({
       <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_360px] lg:items-start lg:gap-6">
         <div className="space-y-6 lg:min-w-0">
           <JourneyHeader journey={journey} />
-          <JourneyTimeline journey={journey} quizzes={quizzes} token={token} />
           {grounding && meta ? (
             // Full map UI — the canonical view, shared with the one-shot
             // lookup flow. Includes graph + grounding panel + warnings.
@@ -68,6 +69,7 @@ export default async function JourneyPage({
             // persisted. Renders the same map data in a stripped-down form.
             <LegacyMapFallback map={map} />
           )}
+          <JourneyTimeline journey={journey} quizzes={quizzes} token={token} />
           <BookmarkHint journey={journey} />
         </div>
         <aside className="mt-6 lg:sticky lg:top-6 lg:mt-0">

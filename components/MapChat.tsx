@@ -127,16 +127,21 @@ function ChatPanel({
 
   return (
     <section className="flex flex-col rounded-lg border border-neutral-200 bg-white">
-      <header className="flex items-center justify-between border-b border-neutral-200 px-5 py-3">
-        <h2 className="text-base font-semibold text-neutral-900">
-          Ask about your map
-        </h2>
+      <header className="flex items-start justify-between gap-3 border-b border-neutral-200 px-5 py-3">
+        <div>
+          <h2 className="text-base font-semibold text-neutral-900">
+            Ask AI about your map
+          </h2>
+          <p className="mt-0.5 text-xs text-neutral-500">
+            Grounded in your map; uses Wikipedia for facts beyond it.
+          </p>
+        </div>
         <button
           type="button"
           onClick={() => setCollapsed((v) => !v)}
           aria-expanded={!collapsed}
           aria-label={collapsed ? "Expand chat" : "Collapse chat"}
-          className="flex h-7 w-7 items-center justify-center rounded-md text-neutral-500 hover:bg-neutral-100 hover:text-neutral-900 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+          className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-neutral-500 hover:bg-neutral-100 hover:text-neutral-900 focus:outline-none focus:ring-2 focus:ring-emerald-500"
         >
           <Chevron direction={collapsed ? "down" : "up"} />
         </button>
