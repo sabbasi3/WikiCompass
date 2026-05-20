@@ -100,8 +100,32 @@ export const quizzes = pgTable(
   }),
 );
 
+// Chat messages for the "ask about your map" panel. One row per turn
+// (user or assistant). Persisted so the panel hydrates with full history
+// on reload — the DurableAgent in app/workflows/map-chat.ts handles the
+// live streaming, the DB is the source of truth on revisit.
+//
+// content is plain text. We're not storing AI SDK message parts here
+// because the chat is text-only for V1 — when we add tool calls in a
+// future round, this becomes jsonb to hold the parts array.
+export const CHAT_ROLES = ["user", "assistant"] as const;
+export type ChatRole = (typeof CHAT_ROLES)[number];
+
+export const chatMessages = pgTable("chat_messages", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  journeyId: uuid("journey_id")
+    .notNull()
+    .references(() => journeys.id, { onDelete: "cascade" }),
+  role: text("role").notNull().$type<ChatRole>(),
+  content: text("content").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});
+
 // Inferred row types — use these in db.ts and elsewhere instead of
 // hand-writing the shapes. If the schema changes, the types follow.
 export type JourneyRow = typeof journeys.$inferSelect;
 export type JourneyInsert = typeof journeys.$inferInsert;
 export type QuizRow = typeof quizzes.$inferSelect;
+export type ChatMessageRow = typeof chatMessages.$inferSelect;

@@ -21,6 +21,7 @@ import { notFound } from "next/navigation";
 
 import { JourneyTimeline } from "@/components/JourneyTimeline";
 import { LearningPath } from "@/components/LearningPath";
+import { MapChat } from "@/components/MapChat";
 import { MapResult } from "@/components/MapResult";
 import {
   getGroundingFromJourney,
@@ -46,20 +47,31 @@ export default async function JourneyPage({
   const meta = getMetaFromJourney(journey);
   const token = signJourneyToken(journey.id);
 
+  // Two-column layout on lg+: main content on the left at the same
+  // effective content width as the old max-w-4xl, chat as a sticky aside
+  // on the right. On smaller viewports the grid collapses and the aside
+  // stacks below the main column (just like the previous layout).
   return (
-    <main className="mx-auto max-w-4xl space-y-6 p-6">
-      <JourneyHeader journey={journey} />
-      <JourneyTimeline journey={journey} quizzes={quizzes} token={token} />
-      {grounding && meta ? (
-        // Full map UI — the canonical view, shared with the one-shot
-        // lookup flow. Includes graph + grounding panel + warnings.
-        <MapResult map={map} grounding={grounding} meta={meta} />
-      ) : (
-        // Legacy fallback for rows created before grounding/meta were
-        // persisted. Renders the same map data in a stripped-down form.
-        <LegacyMapFallback map={map} />
-      )}
-      <BookmarkHint journey={journey} />
+    <main className="mx-auto max-w-7xl p-6">
+      <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_360px] lg:items-start lg:gap-6">
+        <div className="space-y-6 lg:min-w-0">
+          <JourneyHeader journey={journey} />
+          <JourneyTimeline journey={journey} quizzes={quizzes} token={token} />
+          {grounding && meta ? (
+            // Full map UI — the canonical view, shared with the one-shot
+            // lookup flow. Includes graph + grounding panel + warnings.
+            <MapResult map={map} grounding={grounding} meta={meta} />
+          ) : (
+            // Legacy fallback for rows created before grounding/meta were
+            // persisted. Renders the same map data in a stripped-down form.
+            <LegacyMapFallback map={map} />
+          )}
+          <BookmarkHint journey={journey} />
+        </div>
+        <aside className="mt-6 lg:sticky lg:top-6 lg:mt-0">
+          <MapChat journeyId={journey.id} />
+        </aside>
+      </div>
     </main>
   );
 }

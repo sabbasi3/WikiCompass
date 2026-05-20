@@ -14,8 +14,11 @@ import { neon } from "@neondatabase/serverless";
 import type { Grounding, WikiMap } from "../schemas";
 import type { MapMeta } from "../generate-map-response";
 import {
+  chatMessages,
   journeys,
   quizzes,
+  type ChatMessageRow,
+  type ChatRole,
   type JourneyInsert,
   type JourneyLevel,
   type JourneyRow,
@@ -30,7 +33,9 @@ if (!process.env.DATABASE_URL) {
 }
 
 const client = neon(process.env.DATABASE_URL);
-export const db = drizzle(client, { schema: { journeys, quizzes } });
+export const db = drizzle(client, {
+  schema: { journeys, quizzes, chatMessages },
+});
 
 // ── Journey queries ──────────────────────────────────────────────────
 
@@ -152,6 +157,34 @@ export async function getJourneyWithQuizzes(
   if (!journey) return null;
   const rows = await listQuizzes(id);
   return { journey, quizzes: rows };
+}
+
+// ── Chat queries ─────────────────────────────────────────────────────
+// Chat lives per-journey: one row per turn (user or assistant), ordered
+// by createdAt. The DurableAgent in app/workflows/map-chat.ts streams
+// the assistant response live; this table is the source of truth on
+// reload, so the panel hydrates with full history.
+
+export async function insertChatMessage(
+  journeyId: string,
+  role: ChatRole,
+  content: string,
+): Promise<ChatMessageRow> {
+  const [row] = await db
+    .insert(chatMessages)
+    .values({ journeyId, role, content })
+    .returning();
+  return row;
+}
+
+export async function getChatHistory(
+  journeyId: string,
+): Promise<ChatMessageRow[]> {
+  return db
+    .select()
+    .from(chatMessages)
+    .where(eq(chatMessages.journeyId, journeyId))
+    .orderBy(chatMessages.createdAt);
 }
 
 // ── Typed accessors for the stored map / grounding / meta ────────────
