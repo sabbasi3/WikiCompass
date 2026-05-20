@@ -108,12 +108,31 @@ export async function POST(
   }
   const messages = parsed.data.messages as UIMessage[];
 
+  // ── Sanitize messages to text-only parts ─────────────────────────────
+  // useChat keeps the full UIMessage shape in its in-memory state, which
+  // includes step-start/step-finish/tool-call/tool-result parts emitted
+  // by the agent during the prior turn. Those parts make
+  // convertToModelMessages reject the whole array on the next turn with
+  // AI_InvalidPromptError. We only ever persist text to the DB anyway,
+  // so the canonical conversation is just text per turn — strip the rest
+  // before the workflow sees it. This is the same shape the DB-hydrated
+  // history uses on a cold reload, which is why reloads worked but
+  // same-session follow-ups didn't.
+  const sanitizedMessages: UIMessage[] = messages.map((m) => ({
+    ...m,
+    parts: (m.parts ?? []).filter(
+      (part): part is { type: "text"; text: string } =>
+        part.type === "text" &&
+        typeof (part as { text?: unknown }).text === "string",
+    ),
+  }));
+
   // ── Persist the latest user message ──────────────────────────────────
   // The workflow handles persisting the assistant turn after it streams,
   // but we own user-message persistence so a workflow failure doesn't
   // lose the user's input. Extract text from parts (UIMessage shape) or
   // fall back to .content (older message format).
-  const lastUserMessage = [...messages]
+  const lastUserMessage = [...sanitizedMessages]
     .reverse()
     .find((m) => m.role === "user");
   if (lastUserMessage) {
@@ -125,7 +144,9 @@ export async function POST(
 
   // ── Kick the workflow ────────────────────────────────────────────────
   try {
-    const run = await start(mapChatWorkflow, [{ journeyId, messages }]);
+    const run = await start(mapChatWorkflow, [
+      { journeyId, messages: sanitizedMessages },
+    ]);
     return createUIMessageStreamResponse({
       stream: run.readable,
       headers: {
