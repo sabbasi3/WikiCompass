@@ -48,3 +48,6 @@ next-env.d.ts
 
 # local interview notes
 docs/architecture-decisions.md
+
+.vercel
+.env*.local

@@ -17,6 +17,7 @@ import {
   type MapMeta,
   type MapResponse,
 } from "../lib/generate-map-response";
+import { generateQuiz, verifyQuiz } from "../lib/quiz";
 import type { WikiMap } from "../lib/schemas";
 
 // ---------- types ----------
@@ -62,6 +63,13 @@ export type EvalCase = {
   // Hard blacklist: any of these appearing in the map fails the case.
   // Catches off-topic drift.
   forbidden?: string[];
+  // When set, after the map is generated, also generate a retention quiz
+  // against the same map and assert grounding holds. Exercises the
+  // quiz-journey pipeline — guards against verifyQuiz regressions
+  // (e.g. the strict-match-strips-everything bug we hit on Hamlet).
+  // minSurviving sets the gating bar: how many questions must pass
+  // verification (out of 3–5 generated). Default 3.
+  expectedQuiz?: { round?: 1 | 2 | 3; minSurviving?: number };
 };
 
 // Checks are either "gating" (default) — they contribute to case pass/fail
@@ -91,6 +99,16 @@ export async function evalCase(testCase: EvalCase): Promise<CaseResult> {
     testCase.level,
     testCase.userGoal,
   );
+
+  const checks = assertResponse(testCase, response);
+
+  // Optional quiz pipeline check — only runs when the case opts in AND
+  // the map response succeeded. Adds an extra AI call (~5s) so it's
+  // gated by the case flag, not implicit on every map case.
+  if (testCase.expectedQuiz && response.kind === "map") {
+    checks.push(...(await runQuizChecks(testCase, response.map)));
+  }
+
   return {
     topic: testCase.topic,
     level: testCase.level,
@@ -98,8 +116,42 @@ export async function evalCase(testCase: EvalCase): Promise<CaseResult> {
     // tokens are only populated on the "map" path.
     tokens:
       response.kind === "map" ? response.meta.usage?.totalTokens : undefined,
-    checks: assertResponse(testCase, response),
+    checks,
   };
+}
+
+// Quiz pipeline check. Generates one round of retention quiz against the
+// already-produced map and verifies grounding survived. Catches regressions
+// in verifyQuiz's normalize/strip-parens/substring matcher — the matcher
+// has to be tolerant enough that the model's natural paraphrasing doesn't
+// strip every question, but strict enough that hallucinated concepts don't
+// slip through.
+async function runQuizChecks(
+  testCase: EvalCase,
+  map: WikiMap,
+): Promise<Check[]> {
+  const round = testCase.expectedQuiz?.round ?? 1;
+  const minSurviving = testCase.expectedQuiz?.minSurviving ?? 3;
+  const { quiz } = await generateQuiz(map, round, testCase.level);
+  const verified = verifyQuiz(quiz, map);
+  const surviving = verified.quiz.questions.length;
+  const stripped = verified.strippedCount;
+
+  return [
+    {
+      name: "quiz generation",
+      ok: true,
+      detail: `generated ${quiz.questions.length} question(s) for round ${round} (${testCase.level})`,
+    },
+    {
+      name: "quiz grounding",
+      ok: surviving >= minSurviving,
+      detail:
+        surviving >= minSurviving
+          ? `${surviving}/${quiz.questions.length} questions passed grounding, ${stripped} stripped`
+          : `only ${surviving} survived (need ${minSurviving}); stripped refs: ${verified.strippedReasons.map((r) => r.unknownNode).join(", ") || "none"}`,
+    },
+  ];
 }
 
 // ---------- response routing ----------

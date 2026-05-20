@@ -75,6 +75,11 @@ export const cases: EvalCase[] = [
     expectedTopicType: "work",
     expectedMustInclude: ["Shakespeare"],
     forbidden: ["Quantum computing", "Photosynthesis"],
+    // Hamlet's the canary for quiz grounding — the model paraphrases
+    // node titles ("William Shakespeare" vs "Shakespeare", "Hamlet
+    // (play)" vs "Hamlet"). Catches verifyQuiz regressions if the
+    // tolerant matcher ever regresses to strict equality.
+    expectedQuiz: { round: 1, minSurviving: 3 },
   },
 
   // ─────────────────────────────────────────────────────────────────

@@ -1,28 +1,78 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 
 // Renders the state-machine view (skeleton, map, disambiguation, errors).
 import { ResultsByState } from "@/components/ResultsByState";
-import { TopicForm } from "@/components/TopicForm";
+import { TopicForm, type FormMode } from "@/components/TopicForm";
 import { useWikiMap, type Level } from "@/hooks/useWikiMap";
 
 export default function Home() {
+  const router = useRouter();
   const { state, generate, reset } = useWikiMap();
   const [topic, setTopic] = useState("");
   const [level, setLevel] = useState<Level>("beginner");
   const [userGoal, setUserGoal] = useState("");
+  const [mode, setMode] = useState<FormMode>("oneshot");
+  const [email, setEmail] = useState("");
+  const [journeyPending, setJourneyPending] = useState(false);
+  const [journeyError, setJourneyError] = useState<string | null>(null);
 
-  const isLoading = state.kind === "loading";
+  const isLoading = state.kind === "loading" || journeyPending;
 
   function handleSubmit(
     submittedTopic: string,
     submittedLevel: Level,
     submittedGoal: string,
+    submittedMode: FormMode,
+    submittedEmail: string,
   ) {
     setTopic(submittedTopic);
     setLevel(submittedLevel);
-    generate(submittedTopic, submittedLevel, submittedGoal || undefined);
+    if (submittedMode === "oneshot") {
+      generate(submittedTopic, submittedLevel, submittedGoal || undefined);
+      return;
+    }
+    // Journey mode: hit /api/journey/start and redirect to the status page.
+    startJourney({
+      topic: submittedTopic,
+      level: submittedLevel,
+      userGoal: submittedGoal || undefined,
+      email: submittedEmail || undefined,
+    });
+  }
+
+  async function startJourney(body: {
+    topic: string;
+    level: Level;
+    userGoal?: string;
+    email?: string;
+  }) {
+    setJourneyPending(true);
+    setJourneyError(null);
+    try {
+      const res = await fetch("/api/journey/start", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      const data = (await res.json()) as
+        | { kind: "started" | "duplicate"; journeyUrl: string }
+        | { kind: string; message?: string };
+      if (res.ok && "journeyUrl" in data) {
+        router.push(data.journeyUrl);
+        return;
+      }
+      setJourneyError(
+        ("message" in data && data.message) ||
+          `Could not start journey (${res.status})`,
+      );
+      setJourneyPending(false);
+    } catch (err) {
+      setJourneyError(err instanceof Error ? err.message : "Network error");
+      setJourneyPending(false);
+    }
   }
 
   function handlePickCandidate(picked: string) {
@@ -98,12 +148,21 @@ export default function Home() {
             topic={topic}
             level={level}
             userGoal={userGoal}
+            mode={mode}
+            email={email}
             onTopicChange={setTopic}
             onLevelChange={setLevel}
             onUserGoalChange={setUserGoal}
+            onModeChange={setMode}
+            onEmailChange={setEmail}
             onSubmit={handleSubmit}
             disabled={isLoading}
           />
+          {journeyError && (
+            <p className="mt-2 text-sm text-red-600" role="alert">
+              {journeyError}
+            </p>
+          )}
         </div>
 
         <ResultsByState
