@@ -8,7 +8,7 @@
 // That's intentional — the journey feature genuinely needs Postgres,
 // and silently degrading to a no-op would mask the misconfiguration.
 
-import { and, eq, sql } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/neon-http";
 import { neon } from "@neondatabase/serverless";
 import type { Grounding, WikiMap } from "../schemas";
@@ -43,6 +43,10 @@ export const db = drizzle(client, {
 // where status='active' rejects duplicates at the DB layer — we catch
 // the constraint error in the /start route and return the existing
 // journey id rather than blowing up.
+//
+// Email normalization (lowercase + trim) happens here, exactly once,
+// so callers don't have to remember to do it. The dedup query in
+// findActiveJourney trusts that the column is already canonical.
 export async function createJourney(
   input: Omit<JourneyInsert, "id" | "startedAt" | "updatedAt">,
 ): Promise<JourneyRow> {
@@ -50,10 +54,16 @@ export async function createJourney(
     .insert(journeys)
     .values({
       ...input,
-      email: input.email?.toLowerCase().trim() || null,
+      email: normalizeEmail(input.email),
     })
     .returning();
   return row;
+}
+
+function normalizeEmail(email: string | null | undefined): string | null {
+  if (!email) return null;
+  const trimmed = email.trim().toLowerCase();
+  return trimmed.length > 0 ? trimmed : null;
 }
 
 // Rollback helper for /start when workflow startup fails after the row
@@ -69,13 +79,14 @@ export async function getJourney(id: string): Promise<JourneyRow | null> {
 
 // Finds an active journey for (email, topic) — used by /start to check
 // dedup before attempting an insert. Returns null for anonymous (null
-// email) journeys; those never collide.
+// email) journeys; those never collide. Email is normalized here too
+// because /start may have just read the raw form input.
 export async function findActiveJourney(
   email: string | null,
   topic: string,
 ): Promise<JourneyRow | null> {
-  if (!email) return null;
-  const normalized = email.toLowerCase().trim();
+  const normalized = normalizeEmail(email);
+  if (!normalized) return null;
   const [row] = await db
     .select()
     .from(journeys)
@@ -112,15 +123,14 @@ export async function unsubscribeJourney(id: string): Promise<void> {
 // ── Quiz queries ─────────────────────────────────────────────────────
 
 // Inserts the quiz row AND bumps current_round in one HTTP round trip.
-// JourneyTimeline derives the delivered count from quizzes.length so it
-// no longer depends on current_round being in sync — but we still bump
+// JourneyTimeline derives the delivered count from quizzes.length so the
+// UI never depends on current_round being in sync — but we still bump
 // the cursor here for observability (Neon Studio queries, future server
 // code that needs to know the workflow's position without joining).
-// db.batch sends both queries in one HTTP request — neon's HTTP driver
-// doesn't support db.transaction (needs WebSockets) but batch gives us
-// the same atomicity guarantee at the HTTP layer. Both succeed together
-// or both
-// roll back.
+// db.batch is neon-http's pipelined-transaction primitive (the HTTP
+// driver can't run db.transaction, which needs WebSockets) — the
+// statements run inside an implicit BEGIN/COMMIT, so both succeed
+// together or both roll back.
 export async function storeQuizAndAdvance(
   journeyId: string,
   round: number,
@@ -187,9 +197,11 @@ export async function getChatHistory(
     .orderBy(chatMessages.createdAt);
 }
 
-// ── Typed accessors for the stored map / grounding / meta ────────────
-// Stored as jsonb (unknown to Drizzle). The shapes were validated when
-// written by /api/journey/start, so casting at the boundary is safe.
+// ── Typed accessors for jsonb columns ────────────────────────────────
+// Drizzle types jsonb as `unknown`. The shapes were Zod-validated when
+// written (by /api/journey/start for the map, by the quiz workflow for
+// the questions array), so casting at this single boundary is safe and
+// keeps the cast out of every call site.
 // Grounding and meta are nullable for backward compatibility with rows
 // inserted before those columns existed.
 export function getMapFromJourney(journey: JourneyRow): WikiMap {

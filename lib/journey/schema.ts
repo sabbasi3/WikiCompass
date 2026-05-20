@@ -22,13 +22,16 @@ import {
   uuid,
 } from "drizzle-orm/pg-core";
 
+// Type-only — lib/quiz imports JourneyLevel from this file, so a runtime
+// import would be circular. Types are erased so this is safe.
+import type { QuizQuestion } from "../quiz";
+
 // Lifecycle states. The workflow transitions through these; the status
 // page renders different UI per state. `stuck` is the "AI failed three
 // times in a row" terminal — distinct from `cancelled` (user gave up)
 // and `completed` (happy path finished).
 export const JOURNEY_STATUSES = [
   "active",
-  "paused",
   "completed",
   "cancelled",
   "stuck",
@@ -37,6 +40,15 @@ export type JourneyStatus = (typeof JOURNEY_STATUSES)[number];
 
 export const JOURNEY_LEVELS = ["beginner", "intermediate", "advanced"] as const;
 export type JourneyLevel = (typeof JOURNEY_LEVELS)[number];
+
+// Schedule for the three retention quizzes: round N → day-of-journey N.
+// Both the email templates and the timeline UI reference this — one
+// source so they can't drift (e.g., email subject saying "Day 3" while
+// UI says "Day 4").
+export const ROUND_DAYS: Record<1 | 2 | 3, number> = { 1: 1, 2: 3, 3: 7 };
+export function roundToDay(round: 1 | 2 | 3): number {
+  return ROUND_DAYS[round];
+}
 
 export const journeys = pgTable(
   "journeys",
@@ -129,3 +141,12 @@ export type JourneyRow = typeof journeys.$inferSelect;
 export type JourneyInsert = typeof journeys.$inferInsert;
 export type QuizRow = typeof quizzes.$inferSelect;
 export type ChatMessageRow = typeof chatMessages.$inferSelect;
+
+// Typed accessor for the quiz row's jsonb questions column. Lives here
+// (alongside the row type) rather than db.ts so the client-side
+// JourneyTimeline can import it without pulling in the neon driver.
+// The shape was Zod-validated when the quiz was generated (lib/quiz.ts),
+// so the cast at this single boundary is safe.
+export function getQuestionsFromQuiz(quiz: QuizRow): QuizQuestion[] {
+  return quiz.questionsJson as QuizQuestion[];
+}

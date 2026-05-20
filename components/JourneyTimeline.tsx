@@ -11,10 +11,14 @@
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
-import type { JourneyRow, JourneyStatus, QuizRow } from "@/lib/journey/schema";
+import {
+  ROUND_DAYS,
+  getQuestionsFromQuiz,
+  type JourneyRow,
+  type JourneyStatus,
+  type QuizRow,
+} from "@/lib/journey/schema";
 import type { QuizQuestion } from "@/lib/quiz";
-
-const ROUND_DAYS: Record<1 | 2 | 3, number> = { 1: 1, 2: 3, 3: 7 };
 const ROUND_DIFFICULTY: Record<1 | 2 | 3, string> = {
   1: "recognition",
   2: "recall",
@@ -32,10 +36,12 @@ export function JourneyTimeline({
 }) {
   const rounds = [1, 2, 3] as const;
   // Derive delivered-count from the quizzes array, not journey.currentRound.
-  // Quiz insert + currentRound bump aren't guaranteed atomic at the
-  // database level (neon-http batches are HTTP-bundled, not transactional),
-  // so the column can lag by milliseconds. The quizzes array IS the source
-  // of truth — its length tells us exactly how many rounds have landed.
+  // The two writes (insert + counter bump) do commit together via
+  // db.batch — but the UI only ever needs to know "how many quizzes
+  // have landed", and the quizzes array is the direct answer. Reading
+  // from the column would just add an indirection that has to stay in
+  // sync; treating quizzes.length as the source of truth removes that
+  // failure mode entirely.
   const deliveredCount = quizzes.length;
   return (
     <section className="rounded-xl border border-border bg-card p-6 shadow-sm">
@@ -134,9 +140,7 @@ function RoundRow({
         )}
       </div>
 
-      {delivered && (
-        <QuizQuestions questions={quiz!.questionsJson as QuizQuestion[]} />
-      )}
+      {delivered && <QuizQuestions questions={getQuestionsFromQuiz(quiz!)} />}
     </li>
   );
 }
@@ -232,8 +236,6 @@ function statusLabel(journey: JourneyRow, deliveredCount: number): string {
       return "Cancelled";
     case "stuck":
       return "Paused — generation failed and was halted";
-    case "paused":
-      return "Paused";
   }
 }
 

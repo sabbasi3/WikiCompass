@@ -20,6 +20,7 @@ import {
 } from "@react-email/components";
 
 import type { Quiz } from "../lib/quiz";
+import { roundToDay } from "../lib/journey/schema";
 
 type Payload =
   | { kind: "welcome"; topic: string; level: string }
@@ -120,7 +121,7 @@ function QuizBody({
   quiz: Quiz;
   statusUrl: string;
 }) {
-  const dayLabel = ({ 1: 1, 2: 3, 3: 7 } as const)[round];
+  const dayLabel = roundToDay(round);
   const difficultyLabel = quiz.difficulty;
   return (
     <>
@@ -184,7 +185,7 @@ function headingFor(payload: Payload): string {
     case "welcome":
       return `Welcome to your ${payload.topic} journey`;
     case "quiz":
-      return `Day ${({ 1: 1, 2: 3, 3: 7 } as const)[payload.round]} — ${payload.topic}`;
+      return `Day ${roundToDay(payload.round)} — ${payload.topic}`;
     case "completion":
       return `🎉 Journey complete: ${payload.topic}`;
   }

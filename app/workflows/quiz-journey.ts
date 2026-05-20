@@ -177,7 +177,7 @@ async function markStatus(
 
 type WaitOutcome = "continue" | "skip" | "cancelled";
 
-async function waitOrControl(
+async function raceSleepAgainstHooks(
   journeyId: string,
   duration: (typeof DURATIONS)[number],
 ): Promise<WaitOutcome> {
@@ -215,7 +215,7 @@ export async function quizJourneyWorkflow(input: {
   for (const [index, duration] of DURATIONS.entries()) {
     const round = (index + 1) as 1 | 2 | 3;
 
-    const outcome = await waitOrControl(journeyId, duration);
+    const outcome = await raceSleepAgainstHooks(journeyId, duration);
     if (outcome === "cancelled") {
       await markStatus(journeyId, "cancelled");
       return;

@@ -19,6 +19,7 @@ import { useEffect, useMemo, useState } from "react";
 import type { UIMessage } from "ai";
 
 import { Button } from "@/components/ui/button";
+import { textOnlyParts } from "@/lib/ai/messages";
 
 type HydratedMessage = {
   id: string;
@@ -213,12 +214,7 @@ function Chevron({ direction }: { direction: "up" | "down" }) {
 }
 
 function MessageBubble({ message }: { message: UIMessage }) {
-  const text = message.parts
-    .filter(
-      (part): part is { type: "text"; text: string } =>
-        part.type === "text" &&
-        typeof (part as { text?: unknown }).text === "string",
-    )
+  const text = textOnlyParts(message.parts)
     .map((part) => part.text)
     .join("");
 

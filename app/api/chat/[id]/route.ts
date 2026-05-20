@@ -16,7 +16,7 @@ import { NextResponse } from "next/server";
 import { start } from "workflow/api";
 import { z } from "zod";
 
-import { textFromUIMessage } from "@/lib/ai/messages";
+import { textFromUIMessage, textOnlyParts } from "@/lib/ai/messages";
 import {
   getChatHistory,
   getJourney,
@@ -121,11 +121,7 @@ export async function POST(
   // same-session follow-ups didn't.
   const sanitizedMessages: UIMessage[] = messages.map((m) => ({
     ...m,
-    parts: (m.parts ?? []).filter(
-      (part): part is { type: "text"; text: string } =>
-        part.type === "text" &&
-        typeof (part as { text?: unknown }).text === "string",
-    ),
+    parts: textOnlyParts(m.parts),
   }));
 
   // ── Persist the latest user message ──────────────────────────────────

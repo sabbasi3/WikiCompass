@@ -11,6 +11,7 @@
 import { Resend } from "resend";
 
 import type { Quiz } from "./quiz";
+import { roundToDay } from "./journey/schema";
 import { signJourneyToken } from "./journey/tokens";
 import { JourneyEmail } from "../emails/journey";
 
@@ -68,8 +69,4 @@ function subjectFor(payload: EmailKind): string {
     case "completion":
       return `You finished ${payload.topic} — what's next?`;
   }
-}
-
-function roundToDay(round: 1 | 2 | 3): number {
-  return ({ 1: 1, 2: 3, 3: 7 } as const)[round];
 }

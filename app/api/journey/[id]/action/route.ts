@@ -1,8 +1,22 @@
-// POST /api/journey/[id]/action?action=skip|cancel|unsubscribe
+// GET  /api/journey/[id]/action?action=skip|cancel|unsubscribe&token=...
+// POST /api/journey/[id]/action?action=skip|cancel|unsubscribe&token=...
 //
 // One endpoint for every workflow control + the email opt-out. Single
 // route keeps the URL surface tiny (one path per journey) and lets
 // emails embed action links with just a `?action=` swap.
+//
+// Why both verbs: emails render the controls as anchor tags (skip /
+// unsubscribe / view), and anchors fire GET. The route can't be POST-only
+// or every email click would 405. GET performs the same dispatch but
+// redirects to the journey page so the user lands somewhere readable
+// instead of a JSON blob. POST is kept for in-page JS clients
+// (JourneyTimeline's SkipButton) so they get a JSON response they can
+// react to without a navigation.
+//
+// Trade-off worth flagging: GET means link-preview bots can fire the
+// action when an email lands. Acceptable for the demo — worst case is
+// an early quiz delivery or premature unsubscribe. Production hardening
+// would route GET to a 2-step confirm page that POSTs from a form.
 //
 // All actions require a valid HMAC token (?token=...). Same token works
 // for the lifetime of the journey — possession of the URL = identity.
@@ -21,6 +35,55 @@ import { verifyJourneyToken } from "@/lib/journey/tokens";
 import { cancelHook, skipAheadHook } from "@/app/workflows/quiz-journey";
 
 const actionSchema = z.enum(["skip", "cancel", "unsubscribe"]);
+type Action = z.infer<typeof actionSchema>;
+
+type DispatchResult =
+  | { ok: true }
+  | { ok: false; status: number; error: string };
+
+// Validates the request, fires the action, returns a result-shape both
+// HTTP handlers can render however they want (POST → JSON, GET → redirect).
+async function dispatch(
+  journeyId: string,
+  rawAction: string | null,
+  rawToken: string | null,
+): Promise<DispatchResult> {
+  const parsed = actionSchema.safeParse(rawAction);
+  if (!parsed.success)
+    return { ok: false, status: 400, error: "Invalid action" };
+  const action: Action = parsed.data;
+
+  if (!rawToken || !verifyJourneyToken(journeyId, rawToken)) {
+    return { ok: false, status: 403, error: "Invalid or missing token" };
+  }
+
+  const journey = await getJourney(journeyId);
+  if (!journey) return { ok: false, status: 404, error: "Journey not found" };
+
+  try {
+    switch (action) {
+      case "skip":
+        await skipAheadHook.resume(`skip:${journeyId}`, {});
+        return { ok: true };
+      case "cancel":
+        await cancelHook.resume(`cancel:${journeyId}`, {});
+        return { ok: true };
+      case "unsubscribe":
+        await unsubscribeJourney(journeyId);
+        return { ok: true };
+    }
+  } catch (err) {
+    console.error(
+      `[journey/${journeyId}/action] action=${action} failed:`,
+      err,
+    );
+    return {
+      ok: false,
+      status: 409,
+      error: "Action could not be applied — the journey may not be waiting",
+    };
+  }
+}
 
 export async function POST(
   req: Request,
@@ -28,66 +91,37 @@ export async function POST(
 ) {
   const { id: journeyId } = await params;
   const url = new URL(req.url);
-  const rawAction = url.searchParams.get("action");
-  const rawToken = url.searchParams.get("token");
-
-  // ── Validation ─────────────────────────────────────────────────────
-  const parsed = actionSchema.safeParse(rawAction);
-  if (!parsed.success) {
-    return NextResponse.json({ error: "Invalid action" }, { status: 400 });
-  }
-  const action = parsed.data;
-
-  if (!rawToken || !verifyJourneyToken(journeyId, rawToken)) {
+  const result = await dispatch(
+    journeyId,
+    url.searchParams.get("action"),
+    url.searchParams.get("token"),
+  );
+  if (!result.ok) {
     return NextResponse.json(
-      { error: "Invalid or missing token" },
-      { status: 403 },
+      { error: result.error },
+      { status: result.status },
     );
   }
+  return NextResponse.json({
+    ok: true,
+    action: url.searchParams.get("action"),
+  });
+}
 
-  // ── Journey existence check ────────────────────────────────────────
-  // Saves us hitting the workflow API for a journey that doesn't exist.
-  const journey = await getJourney(journeyId);
-  if (!journey) {
-    return NextResponse.json({ error: "Journey not found" }, { status: 404 });
-  }
-
-  // ── Action dispatch ────────────────────────────────────────────────
-  try {
-    switch (action) {
-      case "skip": {
-        // Hook tokens follow `<action>:<journeyId>` — see quiz-journey.ts.
-        // If the workflow isn't currently in a sleep, resume throws — we
-        // surface that as a 409 so the UI can show "no quiz pending right
-        // now" rather than a generic error.
-        await skipAheadHook.resume(`skip:${journeyId}`, {});
-        return NextResponse.json({ ok: true, action });
-      }
-      case "cancel": {
-        await cancelHook.resume(`cancel:${journeyId}`, {});
-        return NextResponse.json({ ok: true, action });
-      }
-      case "unsubscribe": {
-        // Pure DB operation — no workflow involvement. The workflow
-        // keeps running, but sendQuizEmail step now no-ops because
-        // journey.email is null.
-        await unsubscribeJourney(journeyId);
-        return NextResponse.json({ ok: true, action });
-      }
-    }
-  } catch (err) {
-    console.error(
-      `[journey/${journeyId}/action] action=${action} failed:`,
-      err,
-    );
-    // Hook resume fails when no hook is currently waiting (e.g., user
-    // clicked skip while the workflow is in a step rather than a sleep).
-    // 409 conveys "valid request but the state doesn't allow it now."
-    return NextResponse.json(
-      {
-        error: "Action could not be applied — the journey may not be waiting",
-      },
-      { status: 409 },
-    );
-  }
+export async function GET(
+  req: Request,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  const { id: journeyId } = await params;
+  const url = new URL(req.url);
+  const result = await dispatch(
+    journeyId,
+    url.searchParams.get("action"),
+    url.searchParams.get("token"),
+  );
+  // Always send the user to the journey page — successful or not. The
+  // page itself reflects the new state (status badge, timeline, etc.)
+  // and errors are no worse than a stale view, which the user can refresh.
+  // Returning JSON or 405-style errors from an email link click is hostile.
+  return NextResponse.redirect(new URL(`/journey/${journeyId}`, req.url));
 }

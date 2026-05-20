@@ -8,18 +8,32 @@
 
 import type { ModelMessage, UIMessage } from "ai";
 
+// A text-shaped part — the one part type we actually use. useChat's
+// streamed messages can also contain tool-call / tool-result / data /
+// step-start / step-finish parts, none of which we need to render or
+// persist. This narrows to just the parts we care about.
+export type TextPart = { type: "text"; text: string };
+
+// Filter to text parts only, with the right runtime + type narrowing.
+// Lives here so the API route's sanitizer, the workflow's response
+// extractor, and the React bubble component all share one definition.
+export function textOnlyParts(
+  parts: UIMessage["parts"] | undefined,
+): TextPart[] {
+  return (parts ?? []).filter(
+    (part): part is TextPart =>
+      part.type === "text" &&
+      typeof (part as { text?: unknown }).text === "string",
+  );
+}
+
 // Pulls plain text from a UIMessage. Used by the chat API route to
 // persist the user's typed input. Tolerant of both the parts-array
 // shape (current AI SDK) and an older top-level content string, since
 // we don't fully control what useChat sends across versions.
 export function textFromUIMessage(message: UIMessage): string {
   if (message.parts) {
-    return message.parts
-      .filter(
-        (part): part is { type: "text"; text: string } =>
-          part.type === "text" &&
-          typeof (part as { text?: unknown }).text === "string",
-      )
+    return textOnlyParts(message.parts)
       .map((part) => part.text)
       .join("");
   }

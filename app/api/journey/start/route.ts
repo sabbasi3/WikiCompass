@@ -100,8 +100,9 @@ export async function POST(req: Request) {
   // ── Dedupe: existing active journey for (email, topic) wins ────────
   // Without this, mashing the form button would start parallel workflows.
   // Anonymous (null-email) journeys never collide — each gets its own row.
-  const normalizedEmail = email?.toLowerCase().trim() ?? null;
-  const existing = await findActiveJourney(normalizedEmail, topic);
+  // findActiveJourney + createJourney both normalize email internally,
+  // so we pass the raw form value through.
+  const existing = await findActiveJourney(email ?? null, topic);
   if (existing) {
     const response: StartResponse = {
       kind: "duplicate",
@@ -130,7 +131,7 @@ export async function POST(req: Request) {
   // status page renders the full MapResult component using these, same
   // UI the one-shot lookup gets.
   const journey = await createJourney({
-    email: normalizedEmail,
+    email: email ?? null,
     topic,
     level,
     userGoal: userGoal ?? null,
