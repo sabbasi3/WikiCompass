@@ -24,7 +24,6 @@ export const dynamic = "force-dynamic";
 import { notFound } from "next/navigation";
 
 import { JourneyTimeline } from "@/components/JourneyTimeline";
-import { LearningPath } from "@/components/LearningPath";
 import { MapChat } from "@/components/MapChat";
 import { MapResult } from "@/components/MapResult";
 import {
@@ -49,6 +48,10 @@ export default async function JourneyPage({
   const map = getMapFromJourney(journey);
   const grounding = getGroundingFromJourney(journey);
   const meta = getMetaFromJourney(journey);
+  // grounding + meta are nullable in the schema but always written by the
+  // /start route. If a row somehow lacks them, the UI can't render — 404
+  // is cleaner than a half-built page.
+  if (!grounding || !meta) notFound();
   const token = signJourneyToken(journey.id);
 
   // Two-column layout on lg+: main content on the left at the same
@@ -60,15 +63,7 @@ export default async function JourneyPage({
       <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_360px] lg:items-start lg:gap-6">
         <div className="space-y-6 lg:min-w-0">
           <JourneyHeader journey={journey} />
-          {grounding && meta ? (
-            // Full map UI — the canonical view, shared with the one-shot
-            // lookup flow. Includes graph + grounding panel + warnings.
-            <MapResult map={map} grounding={grounding} meta={meta} />
-          ) : (
-            // Legacy fallback for rows created before grounding/meta were
-            // persisted. Renders the same map data in a stripped-down form.
-            <LegacyMapFallback map={map} />
-          )}
+          <MapResult map={map} grounding={grounding} meta={meta} />
           <JourneyTimeline journey={journey} quizzes={quizzes} token={token} />
           <BookmarkHint journey={journey} />
         </div>
@@ -113,31 +108,6 @@ function StatusBadge({ status }: { status: string }) {
     >
       {status}
     </span>
-  );
-}
-
-// Renders for journey rows that predate the grounding/meta columns.
-// New journeys always have both fields populated and render MapResult.
-function LegacyMapFallback({
-  map,
-}: {
-  map: ReturnType<typeof getMapFromJourney>;
-}) {
-  return (
-    <>
-      <section className="rounded-xl border border-border bg-card p-6 shadow-sm">
-        <h2 className="font-serif text-lg font-semibold tracking-tight text-foreground">
-          Summary
-        </h2>
-        <p className="mt-3 leading-relaxed text-foreground/90">{map.summary}</p>
-        {map.keyTakeaway && (
-          <p className="mt-4 border-l-2 border-emerald-200 pl-4 italic leading-relaxed text-muted-foreground">
-            {map.keyTakeaway}
-          </p>
-        )}
-      </section>
-      <LearningPath path={map.learningPath} whyThisPath={map.whyThisPath} />
-    </>
   );
 }
 

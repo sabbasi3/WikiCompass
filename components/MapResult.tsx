@@ -6,12 +6,12 @@
 
 import { useState } from "react";
 
-import { GroundingPanel } from "@/components/GroundingPanel";
-import { KnowledgeGraph } from "@/components/KnowledgeGraph";
-import { LearningPath } from "@/components/LearningPath";
-import { NodeDetailsPanel } from "@/components/NodeDetailsPanel";
-import { TopicOverview } from "@/components/TopicOverview";
-import { WarningsPanel } from "@/components/WarningsPanel";
+import { GroundingPanel } from "@/components/map-result/GroundingPanel";
+import { KnowledgeGraph } from "@/components/map-result/KnowledgeGraph";
+import { LearningPath } from "@/components/map-result/LearningPath";
+import { NodeDetailsPanel } from "@/components/map-result/NodeDetailsPanel";
+import { TopicOverview } from "@/components/map-result/TopicOverview";
+import { WarningsPanel } from "@/components/map-result/WarningsPanel";
 import type { Grounding, WikiMap } from "@/lib/schemas";
 import type { MapMeta } from "@/hooks/useWikiMap";
 
