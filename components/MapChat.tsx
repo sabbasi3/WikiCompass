@@ -19,7 +19,7 @@ import { useEffect, useMemo, useState } from "react";
 import type { UIMessage } from "ai";
 
 import { Button } from "@/components/ui/button";
-import { textOnlyParts } from "@/lib/ai/messages";
+import { textOnlyParts } from "@/lib/ai/message-text";
 
 type HydratedMessage = {
   id: string;

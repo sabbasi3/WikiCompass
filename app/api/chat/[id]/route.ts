@@ -16,7 +16,7 @@ import { NextResponse } from "next/server";
 import { start } from "workflow/api";
 import { z } from "zod";
 
-import { textFromUIMessage, textOnlyParts } from "@/lib/ai/messages";
+import { textFromUIMessage, textOnlyParts } from "@/lib/ai/message-text";
 import {
   getChatHistory,
   getJourney,

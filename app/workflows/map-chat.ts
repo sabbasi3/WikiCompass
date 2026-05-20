@@ -27,7 +27,7 @@ import {
 
 import { AI_MODEL } from "@/lib/ai/model";
 import { buildChatInstructions, buildMapContext } from "@/lib/ai/chat-prompt";
-import { lastAssistantText } from "@/lib/ai/messages";
+import { lastAssistantText } from "@/lib/ai/message-text";
 import {
   getJourney,
   getMapFromJourney,
@@ -80,8 +80,8 @@ export async function mapChatWorkflow(input: {
   "use workflow";
 
   const { journeyId, messages } = input;
-  const writable = getWritable<UIMessageChunk>(); 
-  // writable is the output destination you hand to chatAgent.stream(...), 
+  const writable = getWritable<UIMessageChunk>();
+  // writable is the output destination you hand to chatAgent.stream(...),
   // so the agent knows where to emit its UIMessageChunk stream.
 
   const { topic, level, mapContext } = await loadJourneyContext(journeyId);

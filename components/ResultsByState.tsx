@@ -2,11 +2,11 @@
 
 import { MapResult } from "@/components/MapResult";
 import { MapSkeleton } from "@/components/MapSkeleton";
-import { AiFailedCard } from "@/components/results/AiFailedCard";
-import { DisambiguationCard } from "@/components/results/DisambiguationCard";
-import { ErrorCard } from "@/components/results/ErrorCard";
-import { NotFoundCard } from "@/components/results/NotFoundCard";
-import { RateLimitedCard } from "@/components/results/RateLimitedCard";
+import { AiFailedCard } from "@/components/result-states/AiFailedCard";
+import { DisambiguationCard } from "@/components/result-states/DisambiguationCard";
+import { ErrorCard } from "@/components/result-states/ErrorCard";
+import { NotFoundCard } from "@/components/result-states/NotFoundCard";
+import { RateLimitedCard } from "@/components/result-states/RateLimitedCard";
 import type { WikiMapState } from "@/hooks/useWikiMap";
 
 // Renders the right sub-component for the current WikiMapState kind.
