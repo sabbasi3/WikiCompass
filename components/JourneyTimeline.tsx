@@ -182,6 +182,15 @@ function SkipButton({
         { method: "POST" },
       );
       if (!res.ok) {
+        // 409 means the workflow wasn't currently waiting on a hook — most
+        // often because the page is stale (workflow already advanced past
+        // this sleep). Reload to pick up the real state instead of showing
+        // a confusing "could not be applied" message. Other errors still
+        // surface inline.
+        if (res.status === 409) {
+          location.reload();
+          return;
+        }
         const body = (await res.json().catch(() => null)) as {
           error?: string;
         } | null;
