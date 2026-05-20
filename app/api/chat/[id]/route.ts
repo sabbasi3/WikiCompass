@@ -139,7 +139,7 @@ export async function POST(
     }
   }
 
-  // ── Kick the workflow ────────────────────────────────────────────────
+  // ── Start the chat workflow ──────────────────────────────────────────
   try {
     const run = await start(mapChatWorkflow, [
       { journeyId, messages: sanitizedMessages },

@@ -129,7 +129,7 @@ function RoundRow({
                     : journey.status === "cancelled"
                       ? "Cancelled"
                       : journey.status === "stuck"
-                        ? "Skipped — generation failed"
+                        ? "Failed — generation gave up"
                         : "Pending"}
             </div>
           </div>
@@ -235,7 +235,7 @@ function statusLabel(journey: JourneyRow, deliveredCount: number): string {
     case "cancelled":
       return "Cancelled";
     case "stuck":
-      return "Paused — generation failed and was halted";
+      return "Failed — generation gave up after retries";
   }
 }
 

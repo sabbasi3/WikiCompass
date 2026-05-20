@@ -145,7 +145,7 @@ export async function storeQuizAndAdvance(
   ]);
 }
 
-export async function listQuizzes(journeyId: string): Promise<QuizRow[]> {
+async function listQuizzes(journeyId: string): Promise<QuizRow[]> {
   return db
     .select()
     .from(quizzes)

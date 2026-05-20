@@ -11,9 +11,11 @@
 //                component the one-shot lookup uses, so journey users
 //                get a strict superset: the full map PLUS the quizzes.
 //
-// force-dynamic: this page reflects rapidly-changing workflow state
-// (currentRound bumps every time a quiz lands). A normal reload must
-// re-fetch — caching would make the skip-ahead button race the DB.
+// force-dynamic: opt out of Next.js static/ISR caching so the page is
+// server-rendered fresh on every request. Required here because the
+// background quiz workflow delivers up to 3 rounds asynchronously,
+// inserting new quiz rows each time. Without this, a reload after a
+// quiz arrives would still serve the stale cached HTML until expiry.
 
 export const dynamic = "force-dynamic";
 

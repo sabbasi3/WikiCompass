@@ -7,7 +7,7 @@
 //
 // Why both verbs: emails render the controls as anchor tags (skip /
 // unsubscribe / view), and anchors fire GET. The route can't be POST-only
-// or every email click would 405. GET performs the same dispatch but
+// or every email click would 405. GET runs the same action but
 // redirects to the journey page so the user lands somewhere readable
 // instead of a JSON blob. POST is kept for in-page JS clients
 // (JourneyTimeline's SkipButton) so they get a JSON response they can
@@ -37,17 +37,15 @@ import { cancelHook, skipAheadHook } from "@/app/workflows/quiz-journey";
 const actionSchema = z.enum(["skip", "cancel", "unsubscribe"]);
 type Action = z.infer<typeof actionSchema>;
 
-type DispatchResult =
-  | { ok: true }
-  | { ok: false; status: number; error: string };
+type ActionResult = { ok: true } | { ok: false; status: number; error: string };
 
 // Validates the request, fires the action, returns a result-shape both
 // HTTP handlers can render however they want (POST → JSON, GET → redirect).
-async function dispatch(
+async function runAction(
   journeyId: string,
   rawAction: string | null,
   rawToken: string | null,
-): Promise<DispatchResult> {
+): Promise<ActionResult> {
   const parsed = actionSchema.safeParse(rawAction);
   if (!parsed.success)
     return { ok: false, status: 400, error: "Invalid action" };
@@ -91,7 +89,7 @@ export async function POST(
 ) {
   const { id: journeyId } = await params;
   const url = new URL(req.url);
-  const result = await dispatch(
+  const result = await runAction(
     journeyId,
     url.searchParams.get("action"),
     url.searchParams.get("token"),
@@ -114,7 +112,7 @@ export async function GET(
 ) {
   const { id: journeyId } = await params;
   const url = new URL(req.url);
-  const result = await dispatch(
+  await runAction(
     journeyId,
     url.searchParams.get("action"),
     url.searchParams.get("token"),

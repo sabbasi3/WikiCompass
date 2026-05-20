@@ -33,7 +33,6 @@ import { quizJourneyWorkflow } from "@/app/workflows/quiz-journey";
 // before insert so the optional-email branch in the workflow works.
 const startRequestSchema = mapRequestSchema.extend({
   email: z
-    .string()
     .email()
     .optional()
     .or(z.literal("").transform(() => undefined)),

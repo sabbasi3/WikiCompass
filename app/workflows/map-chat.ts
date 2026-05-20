@@ -84,7 +84,7 @@ export async function mapChatWorkflow(input: {
 
   const { topic, level, mapContext } = await loadJourneyContext(journeyId);
 
-  const agent = new DurableAgent({
+  const chatAgent = new DurableAgent({
     model: AI_MODEL,
     instructions: buildChatInstructions(topic, level, mapContext),
     tools: chatTools,
@@ -93,7 +93,7 @@ export async function mapChatWorkflow(input: {
     temperature: 0.3,
   });
 
-  const result = await agent.stream({
+  const result = await chatAgent.stream({
     messages: await convertToModelMessages(messages),
     writable,
   });
