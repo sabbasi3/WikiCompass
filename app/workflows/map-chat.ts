@@ -80,7 +80,9 @@ export async function mapChatWorkflow(input: {
   "use workflow";
 
   const { journeyId, messages } = input;
-  const writable = getWritable<UIMessageChunk>();
+  const writable = getWritable<UIMessageChunk>(); 
+  // writable is the output destination you hand to chatAgent.stream(...), 
+  // so the agent knows where to emit its UIMessageChunk stream.
 
   const { topic, level, mapContext } = await loadJourneyContext(journeyId);
 
