@@ -16,6 +16,7 @@ import { NextResponse } from "next/server";
 import { start } from "workflow/api";
 import { z } from "zod";
 
+import { textFromUIMessage } from "@/lib/ai/messages";
 import {
   getChatHistory,
   getJourney,
@@ -136,7 +137,7 @@ export async function POST(
     .reverse()
     .find((m) => m.role === "user");
   if (lastUserMessage) {
-    const text = extractUserText(lastUserMessage);
+    const text = textFromUIMessage(lastUserMessage);
     if (text.trim()) {
       await insertChatMessage(journeyId, "user", text);
     }
@@ -164,22 +165,4 @@ export async function POST(
       { status: 502, headers: rate.headers },
     );
   }
-}
-
-// Pulls plain text out of a UIMessage. useChat puts the user's typed
-// content into parts[0].text; older shapes have a top-level content
-// string. Both are handled so we don't depend on the SDK's exact format.
-function extractUserText(message: UIMessage): string {
-  if (message.parts) {
-    return message.parts
-      .filter(
-        (part): part is { type: "text"; text: string } =>
-          part.type === "text" &&
-          typeof (part as { text?: unknown }).text === "string",
-      )
-      .map((part) => part.text)
-      .join("");
-  }
-  const maybeContent = (message as { content?: unknown }).content;
-  return typeof maybeContent === "string" ? maybeContent : "";
 }
