@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono, Lora } from "next/font/google";
 import { SpeedInsights } from "@vercel/speed-insights/next";
+import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -38,11 +39,12 @@ export default function RootLayout({
     >
       <body className="min-h-full flex flex-col">
         {children}
-        {/* Sends Core Web Vitals (LCP / FID / CLS / TTFB) to Vercel
-            Speed Insights for production observability. No-ops outside
-            production. Dashboard lives under the project's "Speed
-            Insights" tab on vercel.com. */}
+        {/* Speed Insights: Core Web Vitals (LCP / FID / CLS / TTFB)
+            for performance regressions. Analytics: page views + traffic
+            volume for usage patterns. Both no-op outside production
+            and ship as separate tabs in the Vercel dashboard. */}
         <SpeedInsights />
+        <Analytics />
       </body>
     </html>
   );

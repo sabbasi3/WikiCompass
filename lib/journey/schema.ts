@@ -28,14 +28,8 @@ import type { QuizQuestion } from "../quiz";
 
 // Lifecycle states. The workflow transitions through these; the status
 // page renders different UI per state. `stuck` is the "AI failed three
-// times in a row" terminal — distinct from `cancelled` (user gave up)
-// and `completed` (happy path finished).
-export const JOURNEY_STATUSES = [
-  "active",
-  "completed",
-  "cancelled",
-  "stuck",
-] as const;
+// times in a row" terminal — distinct from `completed` (happy path).
+export const JOURNEY_STATUSES = ["active", "completed", "stuck"] as const;
 export type JourneyStatus = (typeof JOURNEY_STATUSES)[number];
 
 export const JOURNEY_LEVELS = ["beginner", "intermediate", "advanced"] as const;

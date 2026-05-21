@@ -38,6 +38,7 @@ import { MapInteractive } from "@/components/map-result/MapInteractive";
 import { TopicOverview } from "@/components/map-result/TopicOverview";
 import { WarningsPanel } from "@/components/map-result/WarningsPanel";
 import {
+  getChatHistory,
   getGroundingFromJourney,
   getJourneyWithQuizzes,
   getMapFromJourney,
@@ -45,6 +46,7 @@ import {
 } from "@/lib/journey/db";
 import { signJourneyToken } from "@/lib/journey/tokens";
 import type { JourneyRow } from "@/lib/journey/schema";
+import type { UIMessage } from "ai";
 
 export default async function JourneyPage({
   params,
@@ -52,7 +54,15 @@ export default async function JourneyPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const data = await getJourneyWithQuizzes(id);
+  // Fetch journey + quizzes + chat history in parallel. Chat history
+  // arrives in the initial HTML so the chat panel renders with full
+  // conversation visible on first paint — no client-side loading flash,
+  // no extra round trip. On a missing journey we discard the chat
+  // result; the wasted query is negligible and 404s are rare.
+  const [data, chatRows] = await Promise.all([
+    getJourneyWithQuizzes(id),
+    getChatHistory(id),
+  ]);
   if (!data) notFound();
 
   const { journey, quizzes } = data;
@@ -64,6 +74,12 @@ export default async function JourneyPage({
   // is cleaner than a half-built page.
   if (!grounding || !meta) notFound();
   const token = signJourneyToken(journey.id);
+
+  const initialChatMessages: UIMessage[] = chatRows.map((row) => ({
+    id: row.id,
+    role: row.role,
+    parts: [{ type: "text", text: row.content }],
+  }));
 
   // Two-column layout on lg+: main content on the left at the same
   // effective content width as the old max-w-4xl, chat as a sticky aside
@@ -83,7 +99,10 @@ export default async function JourneyPage({
           <BookmarkHint journey={journey} />
         </div>
         <aside className="mt-6 lg:sticky lg:top-6 lg:mt-0">
-          <MapChat journeyId={journey.id} />
+          <MapChat
+            journeyId={journey.id}
+            initialMessages={initialChatMessages}
+          />
         </aside>
       </div>
     </main>
@@ -114,9 +133,7 @@ function StatusBadge({ status }: { status: string }) {
       ? "bg-emerald-100 text-emerald-700"
       : status === "completed"
         ? "bg-sky-100 text-sky-700"
-        : status === "cancelled"
-          ? "bg-muted text-muted-foreground"
-          : "bg-amber-100 text-amber-700";
+        : "bg-amber-100 text-amber-700";
   return (
     <span
       className={`rounded-full px-3 py-1 text-xs font-medium tracking-wide ${tone}`}

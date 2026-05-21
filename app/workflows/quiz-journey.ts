@@ -4,8 +4,7 @@
 //
 //   sendWelcome
 //   for round in [1, 2, 3]:
-//     wait `duration[round]` racing skip + cancel
-//     if cancelled: mark cancelled, exit
+//     wait `duration[round]` racing skip-ahead hook
 //     generate quiz, verify, store, send email
 //   send completion email, mark completed
 //
@@ -44,11 +43,9 @@ const DURATIONS = DEMO_MODE
 // Token convention: `<action>:<journeyId>`. Action routes reconstruct
 // these tokens from the URL path param when calling .resume().
 const skipToken = (journeyId: string) => `skip:${journeyId}`;
-const cancelToken = (journeyId: string) => `cancel:${journeyId}`;
 
-// Hooks are exported so the action routes can call .resume() on them.
+// Hook is exported so the action route can call .resume() on it.
 export const skipAheadHook = defineHook<Record<string, never>>();
-export const cancelHook = defineHook<{ reason?: string }>();
 
 // ── The workflow ─────────────────────────────────────────────────────
 
@@ -64,11 +61,7 @@ export async function quizJourneyWorkflow(input: {
   for (const [index, duration] of DURATIONS.entries()) {
     const round = (index + 1) as 1 | 2 | 3;
 
-    const outcome = await raceSleepAgainstHooks(journeyId, duration);
-    if (outcome === "cancelled") {
-      await markStatus(journeyId, "cancelled");
-      return;
-    }
+    await raceSleepAgainstSkipHook(journeyId, duration);
 
     try {
       const quiz = await generateAndStoreQuiz(journeyId, round);
@@ -90,32 +83,26 @@ export async function quizJourneyWorkflow(input: {
 }
 
 // ── Wait + race helper ───────────────────────────────────────────────
-// Not a step — this races primitives (sleep + hooks) that the workflow
+// Not a step — this races primitives (sleep + hook) that the workflow
 // runtime tracks directly in its event log for deterministic replay.
+// Either outcome continues to the next quiz, so we don't need a return
+// value; the function resolves when the wait ends, whichever way.
 
-type WaitOutcome = "continue" | "skip" | "cancelled";
-
-async function raceSleepAgainstHooks(
+async function raceSleepAgainstSkipHook(
   journeyId: string,
   duration: (typeof DURATIONS)[number],
-): Promise<WaitOutcome> {
+): Promise<void> {
   // Hooks created with a fixed token reserve that token for the
   // lifetime of the hook. Without explicit disposal, the next
   // iteration's create() throws HookConflictError because the token
   // is still bound to the previous iteration's subscription. The
   // try/finally guarantees release on every exit path — sleep elapsed,
-  // skip fired, cancel fired, or an upstream throw.
+  // skip fired, or an upstream throw.
   const skip = skipAheadHook.create({ token: skipToken(journeyId) });
-  const cancel = cancelHook.create({ token: cancelToken(journeyId) });
   try {
-    return await Promise.race([
-      sleep(duration).then(() => "continue" as const),
-      skip.then(() => "skip" as const),
-      cancel.then(() => "cancelled" as const),
-    ]);
+    await Promise.race([sleep(duration), skip]);
   } finally {
     skip.dispose();
-    cancel.dispose();
   }
 }
 
@@ -214,7 +201,7 @@ async function sendJourneyEmailStep(
 
 async function markStatus(
   journeyId: string,
-  status: "completed" | "cancelled" | "stuck",
+  status: "completed" | "stuck",
 ): Promise<void> {
   "use step";
   await updateJourneyStatus(journeyId, status);

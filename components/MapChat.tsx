@@ -5,8 +5,10 @@
 // response streams in token-by-token, and a dropped tab can reconnect
 // to the in-flight workflow without losing chunks.
 //
-// History lives in the chat_messages table; we hydrate on mount via
-// GET /api/chat/[id] so a page reload still shows the conversation.
+// History lives in the chat_messages table and is server-fetched by
+// the journey page, then passed in via `initialMessages`. That means
+// the conversation is visible in the first paint — no client-side
+// loading flash — and we save a round trip on every page load.
 // New turns get persisted server-side: user message in the POST route
 // before the workflow kicks, assistant message in a "use step" after
 // agent.stream finishes (see app/workflows/map-chat.ts).
@@ -15,90 +17,23 @@
 
 import { useChat } from "@ai-sdk/react";
 import { WorkflowChatTransport } from "@workflow/ai";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import type { UIMessage } from "ai";
 
 import { Button } from "@/components/ui/button";
 import { textOnlyParts } from "@/lib/ai/message-text";
 
-type HydratedMessage = {
-  id: string;
-  role: "user" | "assistant";
-  content: string;
-  createdAt: string;
-};
-
-function toUIMessage(row: HydratedMessage): UIMessage {
-  return {
-    id: row.id,
-    role: row.role,
-    parts: [{ type: "text", text: row.content }],
-  };
-}
-
-export function MapChat({ journeyId }: { journeyId: string }) {
-  const [hydrated, setHydrated] = useState(false);
-  const [initialMessages, setInitialMessages] = useState<UIMessage[]>([]);
-  const [hydrationError, setHydrationError] = useState<string | null>(null);
-
-  // Hydrate history once on mount. We only set initialMessages before
-  // useChat mounts so subsequent reloads don't fight with the SDK's
-  // internal state. If the fetch fails we still let the user chat —
-  // just without past history.
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const res = await fetch(`/api/chat/${journeyId}`);
-        if (!res.ok) throw new Error(`status ${res.status}`);
-        const data = (await res.json()) as { messages: HydratedMessage[] };
-        if (cancelled) return;
-        setInitialMessages(data.messages.map(toUIMessage));
-      } catch (err) {
-        if (cancelled) return;
-        setHydrationError(
-          err instanceof Error ? err.message : "Failed to load history",
-        );
-      } finally {
-        if (!cancelled) setHydrated(true);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [journeyId]);
-
-  if (!hydrated) {
-    return (
-      <div className="rounded-lg border border-neutral-200 bg-white p-6 text-sm text-neutral-500">
-        Loading chat…
-      </div>
-    );
-  }
-
-  return (
-    <ChatPanel
-      journeyId={journeyId}
-      initialMessages={initialMessages}
-      hydrationError={hydrationError}
-    />
-  );
-}
-
-// Split into its own component so the transport is created exactly once
-// per (journeyId, initialMessages) — useChat doesn't allow swapping
-// transports after mount. The outer MapChat handles the async hydration
-// and only mounts ChatPanel once history is in hand.
-function ChatPanel({
+export function MapChat({
   journeyId,
   initialMessages,
-  hydrationError,
 }: {
   journeyId: string;
   initialMessages: UIMessage[];
-  hydrationError: string | null;
 }) {
   const [input, setInput] = useState("");
+
+  // Transport is created exactly once per (journeyId, initialMessages)
+  // — useChat doesn't allow swapping transports after mount.
   const transport = useMemo(
     () => new WorkflowChatTransport({ api: `/api/chat/${journeyId}` }),
     [journeyId],
@@ -159,13 +94,6 @@ function ChatPanel({
             {messages.map((msg) => (
               <MessageBubble key={msg.id} message={msg} />
             ))}
-            {hydrationError && (
-              <p className="text-xs text-amber-700">
-                Couldn&apos;t load prior history ({hydrationError}). You can
-                still chat — just past turns from this journey aren&apos;t
-                shown.
-              </p>
-            )}
             {error && (
               <p className="text-xs text-red-700">
                 {error.message || "Something went wrong sending that message."}

@@ -1,5 +1,5 @@
-// GET  /api/journey/[id]/action?action=skip|cancel|unsubscribe&token=...
-// POST /api/journey/[id]/action?action=skip|cancel|unsubscribe&token=...
+// GET  /api/journey/[id]/action?action=skip|unsubscribe&token=...
+// POST /api/journey/[id]/action?action=skip|unsubscribe&token=...
 //
 // One endpoint for every workflow control + the email opt-out. Single
 // route keeps the URL surface tiny (one path per journey) and lets
@@ -23,7 +23,6 @@
 //
 // Action behaviors:
 //   skip        — fire skipAheadHook → workflow exits current sleep
-//   cancel      — fire cancelHook    → workflow marks status=cancelled
 //   unsubscribe — DB-only: null out the email column. Workflow keeps
 //                  running; future email steps no-op gracefully.
 
@@ -32,9 +31,9 @@ import { z } from "zod";
 
 import { getJourney, unsubscribeJourney } from "@/lib/journey/db";
 import { verifyJourneyToken } from "@/lib/journey/tokens";
-import { cancelHook, skipAheadHook } from "@/app/workflows/quiz-journey";
+import { skipAheadHook } from "@/app/workflows/quiz-journey";
 
-const actionSchema = z.enum(["skip", "cancel", "unsubscribe"]);
+const actionSchema = z.enum(["skip", "unsubscribe"]);
 type Action = z.infer<typeof actionSchema>;
 
 type ActionResult = { ok: true } | { ok: false; status: number; error: string };
@@ -62,9 +61,6 @@ async function runAction(
     switch (action) {
       case "skip":
         await skipAheadHook.resume(`skip:${journeyId}`, {});
-        return { ok: true };
-      case "cancel":
-        await cancelHook.resume(`cancel:${journeyId}`, {});
         return { ok: true };
       case "unsubscribe":
         await unsubscribeJourney(journeyId);

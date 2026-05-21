@@ -4,13 +4,11 @@
 // still active.
 //
 // Server-fetched `journey` + `quizzes` come from the page; this
-// component just renders + handles the action POSTs.
+// component renders to HTML on the server. Only the SkipButton is a
+// client island, and only when the journey is active and there's a
+// next round to skip to.
 
-"use client";
-
-import { useState } from "react";
-
-import { Button } from "@/components/ui/button";
+import { SkipButton } from "@/components/SkipButton";
 import {
   ROUND_DAYS,
   getQuestionsFromQuiz,
@@ -19,6 +17,7 @@ import {
   type QuizRow,
 } from "@/lib/journey/schema";
 import type { QuizQuestion } from "@/lib/quiz";
+
 const ROUND_DIFFICULTY: Record<1 | 2 | 3, string> = {
   1: "recognition",
   2: "recall",
@@ -94,7 +93,7 @@ function RoundRow({
   // Three orthogonal states drive what to render:
   //   delivered = the quiz row exists
   //   upNext    = no quiz yet AND this round is the immediate next one
-  //   active    = journey can still be advanced (not cancelled/stuck/completed)
+  //   active    = journey can still be advanced (not stuck/completed)
   const delivered = quiz !== null;
   const upNext = !delivered && round === deliveredCount + 1;
   const active = journey.status === "active";
@@ -126,11 +125,9 @@ function RoundRow({
                   ? "Next up"
                   : isFuture && active
                     ? "Queued"
-                    : journey.status === "cancelled"
-                      ? "Cancelled"
-                      : journey.status === "stuck"
-                        ? "Failed — generation gave up"
-                        : "Pending"}
+                    : journey.status === "stuck"
+                      ? "Failed — generation gave up"
+                      : "Pending"}
             </div>
           </div>
         </div>
@@ -167,73 +164,12 @@ function QuizQuestions({ questions }: { questions: QuizQuestion[] }) {
   );
 }
 
-function SkipButton({
-  journeyId,
-  token,
-}: {
-  journeyId: string;
-  token: string;
-}) {
-  const [pending, setPending] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  async function handleSkip() {
-    setPending(true);
-    setError(null);
-    try {
-      const res = await fetch(
-        `/api/journey/${journeyId}/action?action=skip&token=${encodeURIComponent(token)}`,
-        { method: "POST" },
-      );
-      if (!res.ok) {
-        // 409 means the workflow wasn't currently waiting on a hook — most
-        // often because the page is stale (workflow already advanced past
-        // this sleep). Reload to pick up the real state instead of showing
-        // a confusing "could not be applied" message. Other errors still
-        // surface inline.
-        if (res.status === 409) {
-          location.reload();
-          return;
-        }
-        const body = (await res.json().catch(() => null)) as {
-          error?: string;
-        } | null;
-        setError(body?.error ?? `Request failed (${res.status})`);
-        setPending(false);
-        return;
-      }
-      // Workflow runs out-of-band — give it a beat for the quiz to be
-      // written, then refresh to pick up the new row.
-      setTimeout(() => location.reload(), 2000);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Network error");
-      setPending(false);
-    }
-  }
-
-  return (
-    <div className="flex flex-col items-end gap-1">
-      <Button
-        size="sm"
-        variant="outline"
-        onClick={handleSkip}
-        disabled={pending}
-      >
-        {pending ? "Skipping…" : "Skip ahead"}
-      </Button>
-      {error && <span className="text-xs text-red-600">{error}</span>}
-    </div>
-  );
-}
-
 function statusLabel(journey: JourneyRow, deliveredCount: number): string {
   switch (journey.status as JourneyStatus) {
     case "active":
       return `${deliveredCount}/3 quizzes delivered`;
     case "completed":
       return "Completed — all 3 quizzes delivered";
-    case "cancelled":
-      return "Cancelled";
     case "stuck":
       return "Failed — generation gave up after retries";
   }
