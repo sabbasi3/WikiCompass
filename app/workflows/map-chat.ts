@@ -26,7 +26,11 @@ import {
 } from "ai";
 
 import { AI_MODEL } from "@/lib/ai/model";
-import { buildChatInstructions, buildMapContext } from "@/lib/ai/chat-prompt";
+import {
+  buildChatContextMessage,
+  buildChatInstructions,
+  buildMapContext,
+} from "@/lib/ai/chat-prompt";
 import { lastAssistantText } from "@/lib/ai/message-text";
 import {
   getJourney,
@@ -88,15 +92,40 @@ export async function mapChatWorkflow(input: {
 
   const chatAgent = new DurableAgent({
     model: AI_MODEL,
-    instructions: buildChatInstructions(topic, level, mapContext),
+    instructions: buildChatInstructions(),
     tools: chatTools,
     // Match the temperature we use for map generation. The chat is
     // explanatory rather than creative — keep it grounded.
     temperature: 0.3,
   });
 
+  // Topic + level + map flow through the user channel, not the system
+  // prompt, so user-controlled content never sits in the model's
+  // highest-authority slot. The synthetic [user, assistant] prefix is
+  // built fresh every turn from the journey row — never persisted to
+  // chat_messages and never visible in useChat's in-memory state.
+  const contextPrefix: UIMessage[] = [
+    {
+      id: "ctx-user",
+      role: "user",
+      parts: [
+        {
+          type: "text",
+          text: buildChatContextMessage(topic, level, mapContext),
+        },
+      ],
+    },
+    {
+      id: "ctx-asst",
+      role: "assistant",
+      parts: [
+        { type: "text", text: "Got it. What would you like to dig into?" },
+      ],
+    },
+  ];
+
   const result = await chatAgent.stream({
-    messages: await convertToModelMessages(messages),
+    messages: await convertToModelMessages([...contextPrefix, ...messages]),
     writable,
   });
 

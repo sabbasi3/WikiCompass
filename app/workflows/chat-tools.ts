@@ -80,8 +80,13 @@ async function fetchWikipediaExtractStep(title: string): Promise<
   };
 }
 
+// Exported so the chat prompt can refer to the tool by name without
+// hard-coding a string that would silently drift if we ever renamed the
+// tool. Source of truth lives here next to the tool definition.
+export const FETCH_WIKIPEDIA_EXTRACT_TOOL = "fetchWikipediaExtract";
+
 export const chatTools = {
-  fetchWikipediaExtract: tool({
+  [FETCH_WIKIPEDIA_EXTRACT_TOOL]: tool({
     description:
       "Fetch a plain-text excerpt (up to ~2500 chars) from the Wikipedia article for a given title. Use this when the user asks for details NOT in the map — specific events, dates, named entities, character relationships, technical depth — and the map's 1-3 sentence node explanations aren't enough to answer accurately. Prefer the map context first; reach for this tool when you'd otherwise have to guess from training data.",
     inputSchema: z.object({

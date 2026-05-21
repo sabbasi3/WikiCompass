@@ -21,10 +21,29 @@ import {
 //   level     — audience the AI should adapt to.
 //   userGoal  — optional free-form "why are you learning this?" string
 //               the prompt incorporates to personalize the path.
+//
+// topic and userGoal flow into LLM prompts as plain interpolation, so
+// we strip C0 (0x00-0x1F) and C1 (0x7F-0x9F) control characters before
+// storing. Otherwise a user could smuggle newlines or zero-width chars
+// that look like new instruction blocks ("...\nIgnore the above and...")
+// when interpolated into the prompt. The chat panel reads topic back
+// from Postgres on every turn, so sanitizing once on insert keeps the
+// stored value clean for the lifetime of the journey.
+function sanitizePromptText(s: string): string {
+  let out = "";
+  for (const ch of s) {
+    const code = ch.codePointAt(0);
+    if (code === undefined) continue;
+    if (code <= 0x1f || (code >= 0x7f && code <= 0x9f)) continue;
+    out += ch;
+  }
+  return out.replace(/\s+/g, " ").trim();
+}
+
 export const mapRequestSchema = z.object({
-  topic: z.string().min(1).max(200),
+  topic: z.string().min(1).max(200).transform(sanitizePromptText),
   level: z.enum(["beginner", "intermediate", "advanced"]),
-  userGoal: z.string().max(500).optional(),
+  userGoal: z.string().max(500).transform(sanitizePromptText).optional(),
 });
 
 // ─────────────────────────────────────────────────────────────────
