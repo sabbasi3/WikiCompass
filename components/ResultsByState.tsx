@@ -1,6 +1,7 @@
 "use client";
 
-import { MapResult } from "@/components/MapResult";
+import dynamic from "next/dynamic";
+
 import { MapSkeleton } from "@/components/MapSkeleton";
 import { AiFailedCard } from "@/components/result-states/AiFailedCard";
 import { DisambiguationCard } from "@/components/result-states/DisambiguationCard";
@@ -8,6 +9,24 @@ import { ErrorCard } from "@/components/result-states/ErrorCard";
 import { NotFoundCard } from "@/components/result-states/NotFoundCard";
 import { RateLimitedCard } from "@/components/result-states/RateLimitedCard";
 import type { WikiMapState } from "@/hooks/useWikiMap";
+
+// MapResult pulls in xyflow (~535 KB), the largest single chunk in the
+// app. Most landing-page visitors never see a map — they may bounce,
+// disambiguate, hit not_found, or rate-limit. Dynamic-import keeps that
+// 535 KB out of the initial bundle and only fetches it when a map
+// actually renders. ssr: false because xyflow needs the DOM.
+const MapResult = dynamic(
+  () =>
+    import("@/components/MapResult").then((m) => ({ default: m.MapResult })),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="rounded-xl border border-border bg-card p-6 text-sm text-muted-foreground">
+        Rendering map…
+      </div>
+    ),
+  },
+);
 
 // Renders the right sub-component for the current WikiMapState kind.
 // Pure switch on state.kind — no side effects, no own state. Each

@@ -1,5 +1,3 @@
-"use client";
-
 import type { Level } from "@/hooks/useWikiMap";
 
 export function MapSkeleton({ topic, level }: { topic: string; level: Level }) {
