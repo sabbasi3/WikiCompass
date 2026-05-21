@@ -1,17 +1,24 @@
 // Status page for a learning journey. Server component — fetches the
 // journey + its quizzes from Postgres and renders everything in one
-// shot. Interactive bits (skip-ahead button, knowledge graph, node
-// details panel) live inside the imported client components.
+// shot.
 //
-// Render layout:
-//   Header     — topic, level, status, started date
-//   MapResult  — the canonical map UI (TopicOverview / WarningsPanel /
-//                KnowledgeGraph / LearningPath / GroundingPanel). Same
-//                component the one-shot lookup uses, so journey users
-//                get a strict superset: the full map PLUS the quizzes.
-//   Timeline   — 3 quiz rounds with delivery state + skip-ahead control.
-//                Sits below the map because the map is the primary content;
-//                quizzes are a time-shifted follow-up.
+// Render layout (top to bottom):
+//   JourneyHeader   — topic, level, status, started date
+//   TopicOverview   — summary + key takeaway. Server-rendered.
+//   WarningsPanel   — sensitive-topic notices. Server-rendered.
+//   MapInteractive  — the knowledge graph + floating details panel.
+//                     The one client island in the map UI.
+//   LearningPath    — numbered steps + whyThisPath rationale. Server.
+//   GroundingPanel  — cited Wikipedia articles. Server-rendered.
+//   JourneyTimeline — 3 quiz rounds with skip-ahead control. Client
+//                     because of the Skip button + reload behavior.
+//   BookmarkHint    — anonymous-journey nudge. Server.
+//   MapChat (aside) — sticky chat panel. Client for streaming + tools.
+//
+// We compose the map blocks here directly (rather than via the shared
+// MapResult component used by the home-page lookup flow) so the static
+// ones render on the server and never ship JS to the browser. Only the
+// graph, the chat, and the timeline cross into client-side.
 //
 // force-dynamic: opt out of Next.js static/ISR caching so the page is
 // server-rendered fresh on every request. Required here because the
@@ -25,7 +32,11 @@ import { notFound } from "next/navigation";
 
 import { JourneyTimeline } from "@/components/JourneyTimeline";
 import { MapChat } from "@/components/MapChat";
-import { MapResult } from "@/components/MapResult";
+import { GroundingPanel } from "@/components/map-result/GroundingPanel";
+import { LearningPath } from "@/components/map-result/LearningPath";
+import { MapInteractive } from "@/components/map-result/MapInteractive";
+import { TopicOverview } from "@/components/map-result/TopicOverview";
+import { WarningsPanel } from "@/components/map-result/WarningsPanel";
 import {
   getGroundingFromJourney,
   getJourneyWithQuizzes,
@@ -63,7 +74,11 @@ export default async function JourneyPage({
       <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_360px] lg:items-start lg:gap-6">
         <div className="space-y-6 lg:min-w-0">
           <JourneyHeader journey={journey} />
-          <MapResult map={map} grounding={grounding} meta={meta} />
+          <TopicOverview map={map} meta={meta} />
+          <WarningsPanel warnings={map.warnings} />
+          <MapInteractive map={map} />
+          <LearningPath path={map.learningPath} whyThisPath={map.whyThisPath} />
+          <GroundingPanel grounding={grounding} />
           <JourneyTimeline journey={journey} quizzes={quizzes} token={token} />
           <BookmarkHint journey={journey} />
         </div>
