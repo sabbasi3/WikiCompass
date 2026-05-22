@@ -17,6 +17,9 @@ const PRICING: Record<string, { inputPerM: number; outputPerM: number }> = {
   "openai/gpt-5-nano": { inputPerM: 0.05, outputPerM: 0.4 },
   "openai/gpt-5-mini": { inputPerM: 0.25, outputPerM: 2.0 },
   "openai/gpt-4.1-mini": { inputPerM: 0.4, outputPerM: 1.6 },
+  "zai/glm-4.6": { inputPerM: 0.6, outputPerM: 2.2 },
+  "zai/glm-4.7-flash": { inputPerM: 0.07, outputPerM: 0.4 },
+  "zai/glm-4.5-air": { inputPerM: 0.2, outputPerM: 1.1 },
 };
 
 const MODELS = Object.keys(PRICING);

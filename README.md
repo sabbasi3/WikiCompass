@@ -104,7 +104,7 @@ Product value transfers cleanly: turn dense reference content into guided learni
 |---|---|
 | **Live Wikipedia API, no RAG / vector DB** | The AI task is *structuring and classification* of an already-trusted source, not retrieval over hidden documents. Wikipedia is already a structured corpus. RAG would be solving a problem we don't have. The same UI + AI pattern transfers to any structured enterprise source (Confluence, Notion, Salesforce Knowledge) via the same API-call shape — RAG only enters if the source is unstructured (PDFs, transcripts). |
 | **`generateText` + `Output.object` with Zod schema** | Structured output via the AI SDK v6 API: every field is type-checked before the frontend sees it. No `JSON.parse` failures, no "I'm sorry, I can't structure that" responses. Schema is the API contract. |
-| **`gemini-2.5-flash-lite` as default model** | Benchmarked 6 models on the same prompt and schema (see table below). Flash-Lite is fastest (8s), cheapest ($0.0013/map, ~$133 / 100K maps), and passes all integrity checks. Frontier alternatives are 2–11× slower and 3–13× more expensive with no measurable quality gain on the eval suite. Full methodology in [docs/model-benchmark.md](docs/model-benchmark.md). |
+| **`gemini-2.5-flash-lite` as default model** | Benchmarked 7 models on the same prompt and schema (see table below). Flash-Lite is fastest (6s), nearly the cheapest ($0.0013/map, ~$129 / 100K maps), and passes all integrity checks. Frontier alternatives are 2–14× slower and 3–14× more expensive with no measurable quality gain on the eval suite. Full methodology in [docs/model-benchmark.md](docs/model-benchmark.md). |
 | **Native Gateway fallback via `providerOptions.gateway.models`** | One config, no application retry code. Gateway routes the primary → fallback list on transport failures (rate limits, provider outages, timeouts) transparently. Application-level retry handles the *content* failure case (schema validation). |
 | **Verify-then-strip URL pipeline** | Rule 1 of the prompt forbids URLs outside the 150-candidate set, but the model drifts ~3% of the time. For URLs that slip outside, we hit Wikipedia in parallel and keep only those that (a) resolve to a real, non-disambiguation article AND (b) have a resolved-title match against the model's intended node title (Jaccard ≥ 0.6 after stopword removal + plural stemming). Verified URLs are kept; everything else is stripped to `null` and logged. The user never sees a misleading link. |
 | **Candidate priority: lead-section → See Also → tail** | Lead-section links come first (concepts the article depends on), then Wikipedia's editor-curated See Also section (concepts editors think are related), then the long tail of all other article links. Capped at 150. Empirically measured: dropped the model's "outside the candidate set" rate from ~25% (at 60-cap) to ~3% (at 150-cap with See Also priority). Tried 200; introduced eval variance, rolled back to 150. |
@@ -118,19 +118,29 @@ Same prompt, schema, and Wikipedia context (Machine learning beginner, 150 candi
 
 | Model | Latency | Cost / map | Cost / 100K maps | Nodes | Integrity |
 |---|---:|---:|---:|---:|:---:|
-| **`google/gemini-2.5-flash-lite`** (default) | **8.0s** | **$0.0013** | **$133** | 10 | ✓ |
-| `openai/gpt-4.1-mini` | 17.1s | $0.0034 | $343 | 8 | ✓ |
-| `google/gemini-2.5-flash` | 23.7s | $0.013 | $1,255 | 13 | ✓ |
-| `anthropic/claude-haiku-4-5` (fallback) | 30.0s | $0.017 | $1,737 | 16 | ✓ |
-| `openai/gpt-5-mini` | 59.3s | $0.012 | $1,174 | 16 | ✓ |
-| `openai/gpt-5-nano` | 88.2s | $0.0053 | $529 | 9 | ✓ |
+| **`google/gemini-2.5-flash-lite`** (default) | **6.1s** | **$0.0013** | **$129** | 10 | ✓ |
+| `zai/glm-4.7-flash` | 12.7s | $0.0011 | $113 | 14 | ✓ |
+| `openai/gpt-4.1-mini` | 14.5s | $0.0036 | $365 | 8 | ✓ |
+| `anthropic/claude-haiku-4-5` (fallback) | 27.4s | $0.018 | $1,844 | 17 | ✓ |
+| `google/gemini-2.5-flash` | 33.3s | $0.019 | $1,882 | 13 | ✓ |
+| `openai/gpt-5-mini` | 79.4s | $0.014 | $1,371 | 16 | ✓ |
+| `openai/gpt-5-nano` | 83.5s | $0.0045 | $446 | 14 | ✓ |
 
 Headlines:
 
-- **Flash-Lite wins on latency and cost by a wide margin.** 2.1× faster than the next-fastest model (gpt-4.1-mini), 2.6× cheaper. Versus Haiku 4.5: 3.7× faster, 13× cheaper.
-- **All six models pass integrity checks.** Schema validity, graph integrity, and URL grounding hold across providers — quality didn't separate them. Speed and cost did.
+- **Flash-Lite wins on latency and cost by a wide margin.** 2.1× faster than the next-fastest model on cost (gpt-4.1-mini), 2.8× cheaper. Versus Haiku 4.5: 4.5× faster, 14× cheaper.
+- **All seven models in this table pass benchmark integrity checks** — schema validity, graph integrity, URL grounding. Speed and cost did the separating, not quality.
 - **OpenAI reasoning models (gpt-5-nano, gpt-5-mini) run at default reasoning effort in this benchmark.** Setting `providerOptions.openai.reasoningEffort = "minimal"` would speed them up — a production deployment using them would tune that. We don't, because Flash-Lite is faster and cheaper out of the box.
 - **The fallback (Haiku 4.5) is intentionally a *different provider*, not a stronger model.** Cross-provider resilience: a Google outage doesn't take both down.
+
+#### Models we couldn't include
+
+Two model families fail before they reach the benchmark table or fail the eval suite:
+
+- **DeepSeek (`deepseek-v3.1`, `deepseek-r1`) — schema fail.** Both fail `Output.object` against the WikiCompass schema on the AI Gateway. `v3.1` returns content that doesn't match the schema; `r1` returns content that can't be parsed as JSON at all (reasoning models often wrap output in prose/think-tags). The pipeline leans on schema-validated output; rescuing them would mean a per-model manual JSON-extraction path that loses the schema-validation guarantee for everyone else.
+- **GLM family — only `glm-4.7-flash` plays nice.** Of three GLM variants tried, `glm-4.6` and `glm-4.5-air` failed the same schema validation as DeepSeek. Only `glm-4.7-flash` passed the benchmark — but then **regressed against the eval suite: 9/12 cases, 47/50 gating checks** vs. Flash-Lite's clean 12/12 / 50/50. All three failures were the same `expected 1 main_topic, found 0` integrity check, and only on **biographies and historical events** (World War I, Bill Gates ×2); concept / place / organization / work topics passed cleanly. The model produces schema-valid output but doesn't reliably honor the `main_topic` flag for those topic types. Could be revisited if the prompt were tightened to be more explicit about `main_topic` selection — but that's a prompt change that affects every model, not a model swap.
+
+Full detail in [docs/model-benchmark.md](docs/model-benchmark.md#models-that-dont-honor-outputobject-reliably).
 
 ## Fallback behavior
 
@@ -225,7 +235,7 @@ npm run dev         # Next.js dev server
 npm run build       # production build
 npm run typecheck   # tsc --noEmit
 npm run eval        # full eval suite (11 cases)
-npm run benchmark   # 6-model cost / latency benchmark
+npm run benchmark   # 7-model cost / latency benchmark
 npm run test-wiki   # smoke test the Wikipedia layer (no AI call)
 npm run test-ai     # smoke test the AI layer for one topic
 ```
@@ -277,9 +287,9 @@ evals/
 scripts/
   test-wiki.ts                   manual Wikipedia smoke harness
   test-ai.ts                     manual AI smoke harness
-  benchmark.ts                   6-model cost / latency benchmark
+  benchmark.ts                   7-model cost / latency benchmark
 docs/
-  model-benchmark.md             6-model comparison + decision rationale
+  model-benchmark.md             7-model comparison + decision rationale
 ```
 
 ## Production hardening shipped
