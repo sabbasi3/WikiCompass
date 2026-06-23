@@ -59,7 +59,23 @@ export async function checkRateLimit(req: Request): Promise<RateLimitResult> {
     return { ok: true, headers: {} };
   }
   const ip = getClientIp(req);
-  const { success, limit, remaining, reset } = await mapRateLimit.limit(ip);
+
+  // Fail open on transport errors too — not just missing env vars. If Redis
+  // is configured but unreachable (dead host, Upstash outage, DNS failure),
+  // .limit() throws; swallowing it here keeps the limiter from taking down
+  // the whole request. Same rationale as the null-limiter branch above:
+  // briefly serving un-throttled beats a hard outage.
+  let result: Awaited<ReturnType<typeof mapRateLimit.limit>>;
+  try {
+    result = await mapRateLimit.limit(ip);
+  } catch (err) {
+    console.error(
+      "[rate-limit] Redis unreachable, failing open:",
+      err instanceof Error ? err.message : String(err),
+    );
+    return { ok: true, headers: {} };
+  }
+  const { success, limit, remaining, reset } = result;
   const retryAfterSeconds = Math.max(0, Math.ceil((reset - Date.now()) / 1000));
   const headers = {
     "X-RateLimit-Limit": String(limit),
